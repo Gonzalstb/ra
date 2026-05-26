@@ -1,0 +1,113 @@
+.leaflet-popup-content-wrapper {
+    background-color: #020617 !important;
+    color: #f1f5f9 !important;
+    border: 1px solid #1e293b !important;
+    border-radius: 12px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5) !important;
+}
+.leaflet-popup-content {
+    margin: 0 !important;
+    line-height: inherit !important;
+}
+.leaflet-popup-tip {
+    background-color: #020617 !important;
+    border: 1px solid #1e293b !important;
+}
+.leaflet-container a.leaflet-popup-close-button {
+    color: #ffffff !important;
+    padding: 8px !important;
+    font-size: 16px !important;
+    font-weight: bold;
+}
+@media (max-width: 1023px) {
+    .leaflet-bottom.leaflet-right {
+        bottom: 12px !important;
+    }
+}
+.leaflet-interactive {
+    filter: drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.45));
+}
+.custom-time-label {
+    background: transparent !important;
+    border: none !important;
+}
+[data-route-item="true"].route-drag-over-top {
+    box-shadow: inset 0 3px 0 0 #f59e0b;
+}
+[data-route-item="true"].route-drag-over-bottom {
+    box-shadow: inset 0 -3px 0 0 #f59e0b;
+}
+[data-route-item="true"].route-dragging {
+    opacity: 0.45;
+}
+.route-drag-handle:active {
+    cursor: grabbing;
+}
+.dest-card {
+    overflow: hidden;
+}
+.dest-card .dest-action-btn {
+    min-height: 40px;
+    min-width: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+@media (max-width: 1023px) {
+    .dest-card .dest-action-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    .dest-card-reorder {
+        flex-shrink: 0;
+    }
+    #sidebar-content [data-open-maps] {
+        min-height: 36px;
+    }
+}
+@media (max-width: 1023px) {
+    #sidebar.mobile-panel-closed {
+        transform: translateY(calc(100% + 12px));
+        visibility: hidden;
+    }
+    #sidebar:not(.mobile-panel-closed) {
+        transform: translateY(0);
+        visibility: visible;
+    }
+}
+.origin-airport-picker select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.25rem;
+    padding-right: 2.5rem;
+}
+@media (max-width: 1023px) {
+    .origin-airport-picker select,
+    .origin-airport-picker [data-origin-geocode-btn] {
+        min-height: 48px;
+    }
+    #sidebar-content [data-edit-dest],
+    #sidebar-content [data-delete-dest],
+    #sidebar-content [data-toggle-route],
+    #sidebar-content [data-open-maps],
+    #sidebar-content [data-move-route],
+    #btn-calc-times,
+    #btn-day-fit-map,
+    #itinerary-days-list [data-move-day],
+    #itinerary-days-list [data-delete-day],
+    #itinerary-days-list [data-unlink-dest],
+    #itinerary-days-list [data-focus-dest] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn {
+    animation: fadeIn 0.3s ease-out forwards;
+}
