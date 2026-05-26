@@ -8,7 +8,7 @@ import { focusOnLocation } from '../map/mapManager';
 import { openDeleteDestModal, openEditDestModal } from './modals';
 import { renderTripReturnSettings } from './tripReturn';
 import { renderRoutePlan, getDestSegmentNumbers } from './routePlan';
-import { isTextOnlyDestination } from '../utils/destinationHelpers';
+import { isTextOnlyDestination, isWineryDestination } from '../utils/destinationHelpers';
 import { openDirections } from '../services/mapsLinks';
 import { icon } from './icons';
 
@@ -70,6 +70,7 @@ function renderActionButtons(dest, isRoute) {
 function renderDestCard(dest, index, type, trip, routeDestinations = [], routeCount = 0) {
     const isRoute = type === 'route';
     const textOnly = isTextOnlyDestination(dest);
+    const winery = isWineryDestination(dest);
     const dayTitle = dest.dayId ? (trip.days ?? []).find((d) => d.id === dest.dayId)?.title : null;
     const segNums = isRoute ? getDestSegmentNumbers(trip, dest.id) : [];
     const segBadge = segNums.length
@@ -94,7 +95,7 @@ function renderDestCard(dest, index, type, trip, routeDestinations = [], routeCo
         : `<img src="${escapeHtml(dest.photoUrl)}" alt="" class="w-full h-full object-cover" />
             ${isRoute
         ? `<span class="absolute bottom-0 right-0 bg-slate-950/90 text-[8px] text-amber-400 font-extrabold px-1 py-0.5 rounded-tl-md">#${index + 1}</span>`
-        : `<span class="absolute top-0.5 left-0.5 bg-sky-950/90 text-[8px] text-sky-400 font-extrabold px-1 py-0.5 rounded">POI</span>`}`}
+        : `<span class="absolute top-0.5 left-0.5 bg-sky-950/90 text-[8px] text-sky-400 font-extrabold px-1 py-0.5 rounded">${winery ? '🍷' : 'POI'}</span>`}`}
           </div>
           <div class="flex-1 min-w-0 text-left">
             <h4 class="font-bold text-sm ${isRoute ? 'text-white' : 'text-slate-300'} truncate">${escapeHtml(dest.name)}</h4>
@@ -102,6 +103,7 @@ function renderDestCard(dest, index, type, trip, routeDestinations = [], routeCo
             ${dayTitle ? `<span class="text-[9px] font-bold text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20 max-w-full truncate">${escapeHtml(dayTitle)}</span>` : ''}
             ${segBadge}
             ${dest.isReserved ? '<span class="text-[9px] font-bold text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30">Reservado</span>' : ''}
+            ${winery ? '<span class="text-[9px] font-bold text-purple-300 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/30">Bodega</span>' : ''}
             </div>
             <p class="text-[11px] text-slate-400 line-clamp-2 mt-0.5 leading-snug">${escapeHtml(dest.description)}</p>
           </div>

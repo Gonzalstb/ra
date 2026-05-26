@@ -60,7 +60,9 @@ export function bindForms(onMapRedraw) {
                     document.getElementById('form-name').value = result.name;
                 }
                 showAlert(`📍 Encontrado mediante: ${result.matchedLabel}.`);
-                setActiveTab('map');
+                if (window.innerWidth >= 1024) {
+                    setActiveTab('map');
+                }
                 focusOnLocation(result.lat, result.lng);
             } else {
                 showAlert('No pudimos localizar esa dirección. Prueba con calle, ciudad y país (ej. «Sant\'Uberto 164, Castagneto Carducci, Italia») o marca el punto en el mapa.', 'error');
@@ -139,6 +141,7 @@ export function bindForms(onMapRedraw) {
             isTextOnly: false,
             dayId: assignDayId,
             isReserved: false,
+            isWinery: document.getElementById('form-is-winery')?.checked ?? false,
             price: parsePriceInput(document.getElementById('form-price')?.value),
             lat: parseFloat(lat),
             lng: parseFloat(lng),
@@ -202,6 +205,8 @@ function resetAddForm() {
     document.getElementById('form-lat').value = '';
     document.getElementById('form-lng').value = '';
     document.getElementById('address-search').value = '';
+    const wineryEl = document.getElementById('form-is-winery');
+    if (wineryEl) wineryEl.checked = false;
     setForm({
         name: '', description: '', photoUrl: '', duration: '',
         isRoundTrip: false, inRoute: true, isTextOnly: false, coords: { lat: '', lng: '' },
@@ -222,6 +227,7 @@ function updateFormStopTypeUI(type) {
     const inRoute = type === 'route';
 
     document.getElementById('form-map-fields')?.classList.toggle('hidden', isText);
+    document.getElementById('form-winery-field')?.classList.toggle('hidden', isText);
     document.getElementById('route-fields')?.classList.toggle('hidden', !inRoute);
     document.getElementById('form-create-segment-wrap')?.classList.toggle('hidden', !inRoute);
     document.getElementById('form-day-field')?.classList.toggle('hidden', isText && !(getActiveTrip()?.days?.length));

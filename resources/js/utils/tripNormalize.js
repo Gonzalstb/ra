@@ -11,6 +11,7 @@ export function normalizeTrip(trip) {
             ...d,
             dayId: d.dayId ?? null,
             isReserved: !!d.isReserved,
+            isWinery: !!d.isWinery,
             isTextOnly: !!d.isTextOnly,
             price: d.price != null ? d.price : null,
             lat: d.isTextOnly ? null : d.lat,

@@ -135,6 +135,10 @@ class TripSyncService
                 $payload['is_text_only'] = $isTextOnly;
             }
 
+            if (Schema::hasColumn('destinations', 'is_winery')) {
+                $payload['is_winery'] = $dest['isWinery'] ?? false;
+            }
+
             Destination::updateOrCreate(['id' => $dest['id']], $payload);
         }
     }

@@ -56,6 +56,7 @@ class TripFormatter
             'isTextOnly' => (bool) ($destination->is_text_only ?? false)
                 || str_starts_with($destination->description ?? '', '[sin-mapa]'),
             'isReserved' => $destination->is_reserved,
+            'isWinery' => (bool) ($destination->is_winery ?? false),
             'price' => $destination->price !== null ? (float) $destination->price : null,
             'dayId' => $destination->day_id,
             'lat' => $destination->lat !== null ? (float) $destination->lat : null,

@@ -39,6 +39,7 @@ function buildMapFingerprint(trip) {
             lng: d.lng,
             inRoute: d.inRoute,
             isReserved: d.isReserved,
+            isWinery: d.isWinery,
             isTextOnly: d.isTextOnly,
         })),
         routeOrder: route.map((d) => d.id),

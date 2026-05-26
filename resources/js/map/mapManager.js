@@ -10,6 +10,7 @@ import {
     coordsNearlyEqual,
 } from '../services/routing';
 import { mapsLinkHtml } from '../services/mapsLinks';
+import { destinationMapBadgeIcon, isWineryDestination } from '../utils/destinationHelpers';
 
 let mapInstance = null;
 const layers = { markers: [], polylines: [], labels: [] };
@@ -303,8 +304,9 @@ export async function drawMapElements() {
             : dest.inRoute ? 'border-amber-500' : 'border-sky-400';
         const badgeColor = isReserved
             ? 'bg-emerald-600'
+            : isWineryDestination(dest) ? 'bg-purple-700'
             : dest.inRoute ? 'bg-rose-600' : 'bg-sky-600';
-        const badgeIcon = isReserved ? '✓' : (dest.inRoute ? String(routeIndex + 1) : '🔍');
+        const badgeIcon = destinationMapBadgeIcon(dest, routeIndex);
 
         const destIcon = L.divIcon({
             className: 'custom-pin-dest',
@@ -335,6 +337,7 @@ export async function drawMapElements() {
           <div class="p-3">
             <h3 class="font-bold text-white text-base m-0 truncate">${dest.name}</h3>
             ${isReserved ? '<span class="inline-block mt-1.5 text-[10px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-600/50 px-2 py-0.5 rounded">✓ Reservado</span>' : ''}
+            ${isWineryDestination(dest) ? '<span class="inline-block mt-1.5 ml-1 text-[10px] font-bold text-purple-200 bg-purple-950 border border-purple-500/50 px-2 py-0.5 rounded">🍷 Bodega</span>' : ''}
             <p class="text-xs text-slate-300 my-2 leading-relaxed">${dest.description}</p>
             ${dest.inRoute ? `
               <div class="text-xs text-amber-400 font-extrabold bg-slate-900/80 p-2 rounded border border-slate-800 mt-2">

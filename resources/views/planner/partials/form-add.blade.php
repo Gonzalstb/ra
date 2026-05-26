@@ -46,6 +46,13 @@
         <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Descripción o notas</label>
         <textarea id="form-description" rows="3" placeholder="Detalles opcionales..." class="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-xs md:text-sm text-white outline-none transition resize-none"></textarea>
     </div>
+    <div id="form-winery-field" class="p-3 rounded-xl bg-purple-950/30 border border-purple-500/25">
+        <label class="flex items-center gap-3 cursor-pointer min-h-[44px]">
+            <input type="checkbox" id="form-is-winery" class="w-4 h-4 rounded border-slate-600 text-purple-500 focus:ring-purple-500 shrink-0" />
+            <span class="text-[11px] font-bold text-purple-200">🍷 Es una bodega</span>
+        </label>
+        <p class="text-[10px] text-slate-500 mt-1 leading-snug">En el mapa se mostrará con icono de copa en lugar de la lupa.</p>
+    </div>
     <div id="form-price-field" class="p-3 rounded-xl bg-violet-950/40 border border-violet-500/25 space-y-2">
         <label for="form-price" class="block text-[10px] font-bold text-violet-300 uppercase tracking-wider">Precio (opcional)</label>
         <div class="flex rounded-xl overflow-hidden border border-violet-500/30 bg-slate-950 focus-within:border-violet-400 min-h-[48px]">

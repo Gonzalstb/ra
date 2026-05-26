@@ -239,6 +239,7 @@ export function bindModals(handlers) {
         const inRoute = editDestFormState.inRoute;
         const dayId = document.getElementById('edit-dest-day').value || null;
         const isReserved = document.getElementById('edit-dest-reserved')?.checked ?? false;
+        const isWinery = document.getElementById('edit-dest-winery')?.checked ?? false;
         const price = parsePriceInput(document.getElementById('edit-dest-price')?.value);
 
         let destinations = trip.destinations.map((d) => {
@@ -251,6 +252,7 @@ export function bindModals(handlers) {
                 duration: document.getElementById('edit-dest-duration').value || d.duration,
                 isRoundTrip: editDestFormState.isRoundTrip,
                 isReserved,
+                isWinery,
                 price,
                 inRoute: dayId ? true : inRoute,
                 dayId: dayId || null,
@@ -330,6 +332,8 @@ export function openEditDestModal(destId) {
     document.getElementById('edit-dest-search').value = '';
     const reservedEl = document.getElementById('edit-dest-reserved');
     if (reservedEl) reservedEl.checked = !!dest.isReserved;
+    const wineryEl = document.getElementById('edit-dest-winery');
+    if (wineryEl) wineryEl.checked = !!dest.isWinery;
     const priceEl = document.getElementById('edit-dest-price');
     if (priceEl) priceEl.value = dest.price != null && dest.price !== '' ? String(dest.price) : '';
     populateDaySelect(document.getElementById('edit-dest-day'), dest.dayId);
