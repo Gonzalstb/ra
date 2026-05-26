@@ -17,20 +17,6 @@ import {
     hasMapCoords, isTextOnlyDestination, destinationBelongsToDay, sameDayId,
 } from '../utils/destinationHelpers';
 
-let itineraryRenderPaused = 0;
-
-export function pauseItineraryRender() {
-    itineraryRenderPaused += 1;
-}
-
-export function resumeItineraryRender() {
-    itineraryRenderPaused = Math.max(0, itineraryRenderPaused - 1);
-}
-
-export function isItineraryRenderPaused() {
-    return itineraryRenderPaused > 0;
-}
-
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text ?? '';
@@ -188,25 +174,6 @@ function buildDayStopsHtml(trip, dayId) {
         const routeIdx = orderedInRoute.findIndex((r) => r.id === d.id);
         return renderPlanStopCard(d, trip, routeIdx >= 0 ? routeIdx : 0);
     }).join('') + renderDayBudgetFooter(linked);
-}
-
-export function patchDayStopsList(dayId) {
-    const trip = getActiveTrip();
-    const listEl = document.querySelector(`[data-day-stops-list="${dayId}"]`);
-    if (!trip || !listEl) return false;
-    listEl.innerHTML = buildDayStopsHtml(trip, dayId);
-    const linked = trip.destinations.filter((d) => destinationBelongsToDay(d, dayId));
-    const headerMeta = document.querySelector(`[data-day-stop-count="${dayId}"]`);
-    if (headerMeta) {
-        if (linked.length) {
-            headerMeta.textContent = `${linked.length} parada${linked.length > 1 ? 's' : ''}${sumPrices(linked) ? ` · ${formatPrice(sumPrices(linked))}` : ''}`;
-            headerMeta.classList.remove('hidden');
-        } else {
-            headerMeta.textContent = '';
-            headerMeta.classList.add('hidden');
-        }
-    }
-    return true;
 }
 
 function renderDaySummary(trip) {
@@ -664,37 +631,28 @@ export function bindItinerary(onMapRedraw) {
             return;
         }
 
-        pauseItineraryRender();
-        try {
-            const collapsed = (getState().ui.collapsedDayIds ?? []).filter((id) => !sameDayId(id, dayId));
-            if (collapsed.length !== (getState().ui.collapsedDayIds ?? []).length) {
-                setUi({ collapsedDayIds: collapsed });
-            }
-
-            const dest = addTextStopToDay(dayId, name);
-            if (!dest) {
-                showAlert('No se pudo guardar la parada. Prueba de nuevo o recarga la página.', 'error');
-                return;
-            }
-
-            if (!patchDayStopsList(dayId)) {
-                renderItinerary();
-            } else if (input) {
-                input.value = '';
-            }
-
-            renderDaySummary(getActiveTrip());
-            renderSidebar();
-            onMapRedraw?.();
-
-            requestAnimationFrame(() => {
-                document.querySelector(`[data-plan-stop="${dest.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            });
-
-            showAlert(`📝 «${dest.name}» añadida al día (sin mapa).`, 'success');
-        } finally {
-            resumeItineraryRender();
+        // Asegurar que el día esté desplegado
+        const collapsed = (getState().ui.collapsedDayIds ?? []).filter((id) => !sameDayId(id, dayId));
+        if (collapsed.length !== (getState().ui.collapsedDayIds ?? []).length) {
+            setUi({ collapsedDayIds: collapsed });
         }
+
+        const dest = addTextStopToDay(dayId, name);
+        if (!dest) {
+            showAlert('No se pudo guardar la parada. Prueba de nuevo o recarga la página.', 'error');
+            return;
+        }
+
+        // addTextStopToDay dispara emit() → subscriber → renderItinerary() reconstruye el DOM.
+        // Usamos requestAnimationFrame para trabajar con los elementos frescos del DOM.
+        requestAnimationFrame(() => {
+            const freshInput = document.querySelector(`[data-day-text-stop="${dayId}"]`);
+            if (freshInput) freshInput.value = '';
+            document.querySelector(`[data-plan-stop="${dest.id}"]`)
+                ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+
+        showAlert(`📝 «${dest.name}» añadida al día (sin mapa).`, 'success');
     }
 
     document.getElementById('itinerary-days-list')?.addEventListener('input', (e) => {

@@ -10,7 +10,7 @@ import { bindModals, isEditStartModalOpen, isEditDestModalOpen, updateGuideText 
 import { renderSidebar, bindSidebarListEvents } from '../ui/sidebar';
 import { bindForms, setFormCoords, refreshFormDaySelect } from '../ui/forms';
 import { bindGallery, renderGallery } from '../ui/gallery';
-import { bindItinerary, renderItinerary, isItineraryRenderPaused } from '../ui/itinerary';
+import { bindItinerary, renderItinerary } from '../ui/itinerary';
 import { bindRouteDragDrop } from '../ui/routeDragDrop';
 import { bindTripReturn, handleMapPickEnd, isPickingEndOnMap } from '../ui/tripReturn';
 import { bindRoutePlan, renderMapRouteChip, updateMapRouteGuide } from '../ui/routePlan';
@@ -144,9 +144,7 @@ export async function initPlanner() {
         const trip = getActiveTrip();
 
         renderSidebar();
-        if (!isItineraryRenderPaused()) {
-            renderItinerary();
-        }
+        renderItinerary();
         refreshFormDaySelect();
 
         if (trip) {
