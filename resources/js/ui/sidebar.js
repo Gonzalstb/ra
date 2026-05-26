@@ -113,7 +113,7 @@ function renderDestCard(dest, index, type, trip, routeDestinations = [], routeCo
             <span class="text-indigo-400 whitespace-nowrap">${dest.isRoundTrip ? '🔄 Ida/Vuelta' : '➡️ Solo Ida'}</span>
             ${renderMapsButton(dest, index, routeDestinations, trip)}
           </div>`
-        : `<div class="text-[10px] text-slate-500 pl-0">${dest.lat.toFixed(2)}, ${dest.lng.toFixed(2)}</div>`}
+        : `<div class="text-[10px] text-slate-500 pl-0">${dest.lat != null && dest.lng != null ? `${dest.lat.toFixed(2)}, ${dest.lng.toFixed(2)}` : 'Nota del plan (sin mapa)'}</div>`}
       <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
         ${isRoute ? '<span class="text-[9px] text-slate-600 hidden sm:inline">⋮⋮ Arrastra · ▲▼</span>' : '<span class="sr-only">Acciones</span>'}
         ${renderActionButtons(dest, isRoute)}
@@ -128,12 +128,13 @@ export function renderSidebar() {
     if (!trip) return;
 
     const { route: routeDestinations, standalone: standalonePoints } = splitDestinations(trip.destinations);
+    const mapStandalonePoints = standalonePoints.filter((d) => !isTextOnlyDestination(d));
 
     document.getElementById('stat-route')?.replaceChildren(document.createTextNode(String(routeDestinations.length)));
-    document.getElementById('stat-standalone')?.replaceChildren(document.createTextNode(String(standalonePoints.length)));
+    document.getElementById('stat-standalone')?.replaceChildren(document.createTextNode(String(mapStandalonePoints.length)));
     document.getElementById('stat-total')?.replaceChildren(document.createTextNode(String(trip.destinations.length + 1)));
     document.getElementById('route-count')?.replaceChildren(document.createTextNode(String(routeDestinations.length)));
-    document.getElementById('standalone-count')?.replaceChildren(document.createTextNode(String(standalonePoints.length)));
+    document.getElementById('standalone-count')?.replaceChildren(document.createTextNode(String(mapStandalonePoints.length)));
     document.getElementById('origin-name')?.replaceChildren(document.createTextNode(trip.startingPoint.name));
     renderTripReturnSettings();
     renderRoutePlan();
@@ -160,8 +161,8 @@ export function renderSidebar() {
     }
 
     if (standaloneList) {
-        standaloneList.innerHTML = standalonePoints.length
-            ? standalonePoints.map((d) => renderDestCard(d, 0, 'standalone', trip)).join('')
+        standaloneList.innerHTML = mapStandalonePoints.length
+            ? mapStandalonePoints.map((d) => renderDestCard(d, 0, 'standalone', trip)).join('')
             : '<p class="text-xs text-slate-500 italic py-4 text-center bg-slate-900/20 rounded-xl border border-slate-800/40">No tienes puntos libres creados en el mapa.</p>';
     }
 }
