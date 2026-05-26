@@ -1,6 +1,8 @@
 # Planificador de Rutas por la Toscana (Laravel + JavaScript)
 
-Aplicación Laravel 12 con **JavaScript modular vanilla** (sin React), Tailwind CSS 4 y Leaflet.
+Repositorio: [github.com/Gonzalstb/ra](https://github.com/Gonzalstb/ra)
+
+Aplicación Laravel 13 con **JavaScript modular vanilla** (sin React), Tailwind CSS 4 y Leaflet.
 
 ## Base de datos `ra_master`
 
@@ -10,6 +12,16 @@ Aplicación Laravel 12 con **JavaScript modular vanilla** (sin React), Tailwind 
 | Usuario | `root` |
 | Contraseña | `admin` |
 | Host | `mysql` (dentro de Docker) / `127.0.0.1:3306` (desde el host) |
+
+## Clonar el proyecto
+
+```bash
+git clone git@github.com:Gonzalstb/ra.git
+cd ra
+cp .env.example .env
+php artisan key:generate   # o: ./vendor/bin/sail artisan key:generate
+./start.sh
+```
 
 ## Arranque con [Laravel Sail](https://laravel.com/docs/sail)
 
