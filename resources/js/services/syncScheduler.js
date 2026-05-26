@@ -2,28 +2,43 @@ import { getState, setSyncStatus, tripsDataChanged, setStateFromServer, consumeD
 import { syncTrips } from '../api/tripsApi';
 import { showAlert } from '../ui/alerts';
 import { normalizeTrip } from '../utils/tripNormalize';
-import { isTextOnlyDestination } from '../utils/destinationHelpers';
+import { isTextOnlyDestination, isWineryDestination } from '../utils/destinationHelpers';
 
 let syncTimer = null;
 let syncInFlight = false;
 
-/** Si el servidor aún no persiste paradas sin mapa, no las borramos del estado local. */
-function mergeServerTripsPreservingLocalTextStops(serverTrips, localTrips, activeTripId) {
+/** Preserva en el estado local flags que el servidor aún no devuelve bien. */
+function mergeServerTripsPreservingLocalFields(serverTrips, localTrips, activeTripId) {
     const localTrip = localTrips.find((t) => t.id === activeTripId);
     const serverTrip = serverTrips.find((t) => t.id === activeTripId);
     if (!localTrip || !serverTrip) return serverTrips;
 
-    const serverIds = new Set((serverTrip.destinations ?? []).map((d) => d.id));
-    const missingText = (localTrip.destinations ?? []).filter(
+    const localDests = localTrip.destinations ?? [];
+    const serverDests = serverTrip.destinations ?? [];
+    const serverIds = new Set(serverDests.map((d) => d.id));
+
+    const mergedDests = serverDests.map((sd) => {
+        const local = localDests.find((d) => d.id === sd.id);
+        if (!local) return sd;
+        let next = sd;
+        if (isWineryDestination(local) && !isWineryDestination(sd)) {
+            next = { ...next, isWinery: true };
+        }
+        if (local.isReserved && !sd.isReserved) {
+            next = { ...next, isReserved: true };
+        }
+        return next;
+    });
+
+    const missingText = localDests.filter(
         (d) => isTextOnlyDestination(d) && !serverIds.has(d.id)
     );
-    if (!missingText.length) return serverTrips;
 
     return serverTrips.map((t) => {
         if (t.id !== activeTripId) return t;
         return {
             ...t,
-            destinations: [...(t.destinations ?? []), ...missingText],
+            destinations: [...mergedDests, ...missingText],
         };
     });
 }
@@ -50,7 +65,7 @@ export function scheduleSync(force = false) {
             const deletedTripIds = consumeDeletedTripIds();
             const data = await syncTrips(current.trips, current.activeTripId, deletedTripIds);
             if (data?.trips) {
-                const mergedTrips = mergeServerTripsPreservingLocalTextStops(
+                const mergedTrips = mergeServerTripsPreservingLocalFields(
                     data.trips,
                     current.trips,
                     data.activeTripId ?? current.activeTripId

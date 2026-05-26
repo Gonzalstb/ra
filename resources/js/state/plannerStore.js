@@ -274,8 +274,8 @@ export function addTextStopToDay(dayId, name, description = '') {
 }
 
 export function enableSync() {
-    setUi({ skipSync: false });
     lastTripsSnapshot = buildTripsSnapshot(state.trips, state.activeTripId);
+    setUi({ skipSync: false });
 }
 
 export function tripsDataChanged() {

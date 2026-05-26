@@ -68,8 +68,8 @@ export function renderTabs(activeTab) {
     if (sidebar && mainMap) {
         sidebar.className = [
             'flex flex-col bg-slate-950 border-slate-800 shadow-2xl shrink-0 z-50',
-            'fixed lg:relative inset-x-0 bottom-16 lg:bottom-0',
-            'w-full lg:w-[450px] lg:min-w-[450px]',
+            'fixed inset-x-0 bottom-16 lg:static lg:inset-auto lg:bottom-auto',
+            'w-full lg:w-[450px] lg:min-w-[450px] lg:max-w-[450px]',
             'max-h-[min(88vh,calc(100dvh-5rem))] lg:max-h-none lg:h-full min-h-0',
             'rounded-t-2xl lg:rounded-none border-t lg:border-t-0 lg:border-r',
             'transition-transform duration-300 ease-out lg:translate-y-0',

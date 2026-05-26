@@ -60,9 +60,6 @@ export function bindForms(onMapRedraw) {
                     document.getElementById('form-name').value = result.name;
                 }
                 showAlert(`📍 Encontrado mediante: ${result.matchedLabel}.`);
-                if (window.innerWidth >= 1024) {
-                    setActiveTab('map');
-                }
                 focusOnLocation(result.lat, result.lng);
             } else {
                 showAlert('No pudimos localizar esa dirección. Prueba con calle, ciudad y país (ej. «Sant\'Uberto 164, Castagneto Carducci, Italia») o marca el punto en el mapa.', 'error');
@@ -124,7 +121,6 @@ export function bindForms(onMapRedraw) {
 
         if (!lat || !lng) {
             showAlert('Por favor, selecciona una posición en el mapa o busca una dirección antes de guardar.', 'error');
-            setActiveTab('map');
             return;
         }
 

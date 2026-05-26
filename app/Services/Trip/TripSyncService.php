@@ -113,6 +113,14 @@ class TripSyncService
                 $description = '[sin-mapa] '.$description;
             }
 
+            $isWinery = ! empty($dest['isWinery']);
+            $hasWineryColumn = Schema::hasColumn('destinations', 'is_winery');
+            if ($isWinery && ! $hasWineryColumn && ! str_starts_with($description, '[bodega]')) {
+                $description = '[bodega] '.$description;
+            } elseif (! $isWinery && ! $hasWineryColumn) {
+                $description = preg_replace('/^\[bodega\]\s*/', '', $description) ?? $description;
+            }
+
             $payload = [
                 'trip_id' => $trip->id,
                 'day_id' => $dayId,
@@ -136,7 +144,7 @@ class TripSyncService
             }
 
             if (Schema::hasColumn('destinations', 'is_winery')) {
-                $payload['is_winery'] = $dest['isWinery'] ?? false;
+                $payload['is_winery'] = $isWinery;
             }
 
             Destination::updateOrCreate(['id' => $dest['id']], $payload);

@@ -24,6 +24,23 @@ import {
 let lastRenderedTab = '';
 let lastMapFingerprint = '';
 let mapRedrawInFlight = false;
+let mapReady = false;
+
+function bootstrapMap(onMapClick) {
+    waitForLeaflet(() => {
+        initMap(document.getElementById('map-container'), onMapClick);
+        mapReady = true;
+        document.getElementById('map-loading')?.classList.add('hidden');
+        invalidateSize();
+        // Leaflet necesita un layout estable; forzamos el primer dibujado tras mostrar la app.
+        lastMapFingerprint = '';
+        requestAnimationFrame(() => {
+            invalidateSize();
+            onMapRedraw();
+        });
+        window.addEventListener('resize', () => invalidateSize());
+    });
+}
 
 function buildMapFingerprint(trip) {
     if (!trip) return '';
@@ -158,7 +175,7 @@ export async function initPlanner() {
             lastRenderedTab = state.ui.activeTab;
         }
 
-        if (state.ui.dataLoaded && shouldRedrawMap(state)) {
+        if (state.ui.dataLoaded && mapReady && shouldRedrawMap(state)) {
             redraw();
         }
 
@@ -180,19 +197,13 @@ export async function initPlanner() {
         });
         setUi({ dataLoaded: true });
         enableSync();
-        lastMapFingerprint = buildMapFingerprint(getActiveTrip());
         renderSidebar();
         renderItinerary();
         renderTabs('map');
         lastRenderedTab = 'map';
         showApp();
 
-        waitForLeaflet(() => {
-            initMap(document.getElementById('map-container'), handleMapClick);
-            document.getElementById('map-loading')?.classList.add('hidden');
-            redraw();
-            window.addEventListener('resize', () => invalidateSize());
-        });
+        bootstrapMap(handleMapClick);
     } catch (err) {
         console.error(err);
         showAlert('Error al cargar los viajes. Comprueba la conexión o inicia sesión de nuevo.', 'error');

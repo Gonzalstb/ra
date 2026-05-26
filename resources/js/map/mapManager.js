@@ -315,7 +315,7 @@ export async function drawMapElements() {
             <div class="w-10 h-10 border-2 ${borderClass} rounded-full overflow-hidden shadow-lg transition-transform hover:scale-110 duration-200 bg-slate-800">
               <img src="${dest.photoUrl}" class="w-full h-full object-cover" alt="" />
             </div>
-            <div class="absolute -top-1 -right-1 w-5 h-5 ${badgeColor} text-white border-2 border-white text-[9px] rounded-full flex items-center justify-center font-bold shadow-md">
+            <div class="absolute -top-1 -right-1 w-5 h-5 ${badgeColor} text-white border-2 border-white ${badgeIcon === '🍷' ? 'text-[10px] leading-none' : 'text-[9px]'} rounded-full flex items-center justify-center font-bold shadow-md">
               ${badgeIcon}
             </div>
           </div>`,

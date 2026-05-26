@@ -5,7 +5,7 @@
     Panel
 </button>
 
-<aside id="sidebar" class="mobile-panel-closed flex flex-col bg-slate-950 border-slate-800 shadow-2xl shrink-0 z-50 fixed lg:relative inset-x-0 bottom-16 lg:bottom-0 w-full lg:w-[450px] lg:min-w-[450px] max-h-[min(88vh,calc(100dvh-5rem))] lg:max-h-none lg:h-full min-h-0 rounded-t-2xl lg:rounded-none border-t lg:border-t-0 lg:border-r pointer-events-none transition-transform duration-300 ease-out lg:translate-y-0 lg:pointer-events-auto">
+<aside id="sidebar" class="mobile-panel-closed flex flex-col bg-slate-950 border-slate-800 shadow-2xl shrink-0 z-50 fixed inset-x-0 bottom-16 lg:static lg:inset-auto lg:bottom-auto w-full lg:w-[450px] lg:min-w-[450px] lg:max-w-[450px] max-h-[min(88vh,calc(100dvh-5rem))] lg:max-h-none lg:h-full min-h-0 rounded-t-2xl lg:rounded-none border-t lg:border-t-0 lg:border-r pointer-events-none transition-transform duration-300 ease-out lg:translate-y-0 lg:pointer-events-auto">
     <div class="lg:hidden flex flex-col items-center pt-2 pb-1 shrink-0">
         <div class="w-10 h-1 bg-slate-700 rounded-full"></div>
         <button type="button" id="mobile-panel-close" class="mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cerrar panel ▼</button>
