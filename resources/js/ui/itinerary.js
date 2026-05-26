@@ -631,7 +631,6 @@ export function bindItinerary(onMapRedraw) {
             return;
         }
 
-        // Asegurar que el día esté desplegado
         const collapsed = (getState().ui.collapsedDayIds ?? []).filter((id) => !sameDayId(id, dayId));
         if (collapsed.length !== (getState().ui.collapsedDayIds ?? []).length) {
             setUi({ collapsedDayIds: collapsed });
@@ -643,8 +642,6 @@ export function bindItinerary(onMapRedraw) {
             return;
         }
 
-        // addTextStopToDay dispara emit() → subscriber → renderItinerary() reconstruye el DOM.
-        // Usamos requestAnimationFrame para trabajar con los elementos frescos del DOM.
         requestAnimationFrame(() => {
             const freshInput = document.querySelector(`[data-day-text-stop="${dayId}"]`);
             if (freshInput) freshInput.value = '';

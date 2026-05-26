@@ -63,7 +63,7 @@ export function bindForms(onMapRedraw) {
                 setActiveTab('map');
                 focusOnLocation(result.lat, result.lng);
             } else {
-                showAlert('No pudimos encontrar esa dirección. Intenta simplificar el texto o haz clic directo en el mapa.', 'error');
+                showAlert('No pudimos localizar esa dirección. Prueba con calle, ciudad y país (ej. «Sant\'Uberto 164, Castagneto Carducci, Italia») o marca el punto en el mapa.', 'error');
             }
         } catch {
             showAlert('Error al conectar con el servidor de búsqueda de direcciones.', 'error');
