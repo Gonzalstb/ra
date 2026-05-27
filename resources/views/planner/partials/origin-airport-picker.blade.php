@@ -1,9 +1,13 @@
-{{-- $prefix: edit-start | new-trip --}}
-@php($pickerPrefix = $prefix ?? 'edit-start')
+{{-- $prefix: edit-start | new-trip | trip-end --}}
+@php
+    $pickerPrefix = $prefix ?? 'edit-start';
+    $pickerTitle = $pickerTitle ?? 'Origen de salida (aeropuerto)';
+    $pickerIcon = $pickerIcon ?? '✈️';
+@endphp
 <div class="origin-airport-picker space-y-3" data-origin-picker="{{ $pickerPrefix }}">
     <div class="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3 space-y-3">
         <p class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-            ✈️ Origen de salida (aeropuerto)
+            {{ $pickerIcon }} {{ $pickerTitle }}
         </p>
         <div>
             <label for="{{ $pickerPrefix }}-country" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">1. País</label>

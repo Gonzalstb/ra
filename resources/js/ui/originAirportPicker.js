@@ -15,7 +15,16 @@ function formatAirportLabel(airport) {
     return `${airport.iata} — ${city}${airport.name}`;
 }
 
-export function initOriginAirportPicker(prefix, { onSelect, getCurrent }) {
+const DEFAULT_MESSAGES = {
+    geocodeEmpty: 'Escribe una dirección para buscar.',
+    geocodeSuccess: '📍 Ubicación localizada por dirección.',
+    geocodeNotFound: 'No se encontró esa dirección.',
+    geocodeError: 'Error al buscar la dirección.',
+    airportSuccess: (label) => `✈️ Origen: ${label}`,
+};
+
+export function initOriginAirportPicker(prefix, { onSelect, getCurrent, messages: messageOverrides } = {}) {
+    const messages = { ...DEFAULT_MESSAGES, ...messageOverrides };
     const root = document.querySelector(`[data-origin-picker="${prefix}"]`);
     if (!root || pickers.has(prefix)) {
         return pickers.get(prefix);
@@ -133,25 +142,25 @@ export function initOriginAirportPicker(prefix, { onSelect, getCurrent }) {
         selectedAirport = airport;
         const label = `${airport.name} (${airport.iata})`;
         state.setFields(label, airport.lat, airport.lng);
-        showAlert(`✈️ Origen: ${label}`, 'success');
+        showAlert(messages.airportSuccess(label), 'success');
     });
 
     geocodeBtn?.addEventListener('click', async () => {
         const query = addressInput?.value?.trim();
         if (!query) {
-            showAlert('Escribe una dirección para buscar.', 'error');
+            showAlert(messages.geocodeEmpty, 'error');
             return;
         }
         try {
             const result = await geocodeAddress(query, false);
             if (result) {
                 state.setFields(result.name, result.lat, result.lng);
-                showAlert('📍 Origen localizado por dirección.', 'success');
+                showAlert(messages.geocodeSuccess, 'success');
             } else {
-                showAlert('No se encontró esa dirección.', 'error');
+                showAlert(messages.geocodeNotFound, 'error');
             }
         } catch {
-            showAlert('Error al buscar la dirección.', 'error');
+            showAlert(messages.geocodeError, 'error');
         }
     });
 

@@ -4,6 +4,8 @@ import { showAlert } from './alerts';
 import { setActiveTab } from './tabs';
 import { clearRouteLegCache } from '../services/routing';
 import { scheduleSync } from '../services/syncScheduler';
+import { focusOnLocation } from '../map/mapManager';
+import { initOriginAirportPicker } from './originAirportPicker';
 
 export function renderTripReturnSettings() {
     const trip = getActiveTrip();
@@ -55,7 +57,32 @@ function applyReturnSettings(fields, onMapRedraw) {
     scheduleSync();
 }
 
+function applyTripEndFromPicker({ name, lat, lng }, onMapRedraw) {
+    const nameInput = document.getElementById('trip-end-name');
+    const latInput = document.getElementById('trip-end-lat');
+    const lngInput = document.getElementById('trip-end-lng');
+    if (nameInput) nameInput.value = name;
+    if (latInput) latInput.value = lat;
+    if (lngInput) lngInput.value = lng;
+
+    applyReturnSettings({
+        returnToStart: false,
+        endingPoint: { name, lat, lng },
+    }, onMapRedraw);
+
+    setActiveTab('map');
+    focusOnLocation(lat, lng);
+}
+
 export function bindTripReturn(onMapRedraw) {
+    initOriginAirportPicker('trip-end', {
+        onSelect: (coords) => applyTripEndFromPicker(coords, onMapRedraw),
+        messages: {
+            airportSuccess: (label) => `🏁 Punto final: ${label}`,
+            geocodeSuccess: '📍 Punto final localizado por dirección.',
+        },
+    });
+
     document.getElementById('trip-return-to-start')?.addEventListener('change', (e) => {
         const returnToStart = e.target.checked;
         const trip = getActiveTrip();

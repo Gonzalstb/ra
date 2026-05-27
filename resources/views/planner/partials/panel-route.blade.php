@@ -34,7 +34,12 @@
                 </span>
             </label>
         </div>
-        <div id="trip-custom-end-fields" class="hidden space-y-2 p-3 rounded-xl border border-amber-500/20 bg-amber-950/20">
+        <div id="trip-custom-end-fields" class="hidden space-y-3 p-3 rounded-xl border border-amber-500/20 bg-amber-950/20">
+            @include('planner.partials.origin-airport-picker', [
+                'prefix' => 'trip-end',
+                'pickerTitle' => 'Buscar punto final (aeropuerto o dirección)',
+                'pickerIcon' => '🏁',
+            ])
             <input type="text" id="trip-end-name" placeholder="Nombre del punto final"
                 class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-xs text-white outline-none min-h-[44px] focus:border-amber-500" />
             <button type="button" id="btn-pick-end-map"
