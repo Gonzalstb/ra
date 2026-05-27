@@ -2,7 +2,9 @@ import { getState, setSyncStatus, tripsDataChanged, setStateFromServer, consumeD
 import { syncTrips } from '../api/tripsApi';
 import { showAlert } from '../ui/alerts';
 import { normalizeTrip } from '../utils/tripNormalize';
-import { isTextOnlyDestination, isWineryDestination } from '../utils/destinationHelpers';
+import {
+    isBarDestination, isHotelDestination, isTextOnlyDestination, isWineryDestination,
+} from '../utils/destinationHelpers';
 
 let syncTimer = null;
 let syncInFlight = false;
@@ -23,6 +25,12 @@ function mergeServerTripsPreservingLocalFields(serverTrips, localTrips, activeTr
         let next = sd;
         if (isWineryDestination(local) && !isWineryDestination(sd)) {
             next = { ...next, isWinery: true };
+        }
+        if (isHotelDestination(local) && !isHotelDestination(sd)) {
+            next = { ...next, isHotel: true };
+        }
+        if (isBarDestination(local) && !isBarDestination(sd)) {
+            next = { ...next, isBar: true };
         }
         if (local.isReserved && !sd.isReserved) {
             next = { ...next, isReserved: true };

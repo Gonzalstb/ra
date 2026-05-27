@@ -126,10 +126,15 @@
                     <input type="checkbox" id="edit-dest-reserved" class="w-4 h-4 rounded border-slate-600 text-emerald-600 focus:ring-emerald-500" />
                     <span class="text-[11px] font-bold text-emerald-300">Marcar como reservado</span>
                 </label>
-                <label class="flex items-center gap-2 p-3 bg-slate-900 border border-purple-500/30 rounded-xl cursor-pointer min-h-[48px] col-span-2">
-                    <input type="checkbox" id="edit-dest-winery" class="w-4 h-4 rounded border-slate-600 text-purple-500 focus:ring-purple-500" />
-                    <span class="text-[11px] font-bold text-purple-200">🍷 Es una bodega</span>
-                </label>
+                <div class="col-span-2 p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2">
+                    <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tipo de lugar</span>
+                    <div data-place-type-picker="edit" class="grid grid-cols-2 gap-2" role="group" aria-label="Tipo de lugar">
+                        <button type="button" data-place-type="" class="place-type-btn py-2 px-2 text-[10px] font-bold rounded-lg border min-h-[44px] flex flex-col items-center justify-center gap-0.5">General</button>
+                        <button type="button" data-place-type="winery" class="place-type-btn py-2 px-2 text-[10px] font-bold rounded-lg border min-h-[44px] flex flex-col items-center justify-center gap-0.5"><span class="text-sm">🍷</span> Bodega</button>
+                        <button type="button" data-place-type="hotel" class="place-type-btn py-2 px-2 text-[10px] font-bold rounded-lg border min-h-[44px] flex flex-col items-center justify-center gap-0.5"><x-planner-icon name="bed" class="w-3.5 h-3.5" /> Hotel</button>
+                        <button type="button" data-place-type="bar" class="place-type-btn py-2 px-2 text-[10px] font-bold rounded-lg border min-h-[44px] flex flex-col items-center justify-center gap-0.5"><x-planner-icon name="drumstick" class="w-3.5 h-3.5" /> Bar</button>
+                    </div>
+                </div>
                 <div class="col-span-2">
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Precio (solo plan)</label>
                     <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 min-h-[44px] focus-within:border-violet-500/50">

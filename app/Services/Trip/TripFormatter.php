@@ -58,6 +58,10 @@ class TripFormatter
             'isReserved' => $destination->is_reserved,
             'isWinery' => (bool) ($destination->is_winery ?? false)
                 || str_starts_with($destination->description ?? '', '[bodega]'),
+            'isHotel' => (bool) ($destination->is_hotel ?? false)
+                || str_starts_with($destination->description ?? '', '[hotel]'),
+            'isBar' => (bool) ($destination->is_bar ?? false)
+                || str_starts_with($destination->description ?? '', '[bar]'),
             'price' => $destination->price !== null ? (float) $destination->price : null,
             'dayId' => $destination->day_id,
             'lat' => $destination->lat !== null ? (float) $destination->lat : null,

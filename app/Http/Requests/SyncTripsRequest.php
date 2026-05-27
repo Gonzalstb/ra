@@ -52,6 +52,8 @@ class SyncTripsRequest extends FormRequest
             'trips.*.destinations.*.isTextOnly' => 'boolean',
             'trips.*.destinations.*.isReserved' => 'boolean',
             'trips.*.destinations.*.isWinery' => 'boolean',
+            'trips.*.destinations.*.isHotel' => 'boolean',
+            'trips.*.destinations.*.isBar' => 'boolean',
             'trips.*.destinations.*.price' => 'nullable|numeric|min:0',
             'trips.*.destinations.*.lat' => 'nullable|numeric',
             'trips.*.destinations.*.lng' => 'nullable|numeric',

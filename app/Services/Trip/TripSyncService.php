@@ -121,6 +121,22 @@ class TripSyncService
                 $description = preg_replace('/^\[bodega\]\s*/', '', $description) ?? $description;
             }
 
+            $isHotel = ! empty($dest['isHotel']);
+            $hasHotelColumn = Schema::hasColumn('destinations', 'is_hotel');
+            if ($isHotel && ! $hasHotelColumn && ! str_starts_with($description, '[hotel]')) {
+                $description = '[hotel] '.$description;
+            } elseif (! $isHotel && ! $hasHotelColumn) {
+                $description = preg_replace('/^\[hotel\]\s*/', '', $description) ?? $description;
+            }
+
+            $isBar = ! empty($dest['isBar']);
+            $hasBarColumn = Schema::hasColumn('destinations', 'is_bar');
+            if ($isBar && ! $hasBarColumn && ! str_starts_with($description, '[bar]')) {
+                $description = '[bar] '.$description;
+            } elseif (! $isBar && ! $hasBarColumn) {
+                $description = preg_replace('/^\[bar\]\s*/', '', $description) ?? $description;
+            }
+
             $payload = [
                 'trip_id' => $trip->id,
                 'day_id' => $dayId,
@@ -145,6 +161,14 @@ class TripSyncService
 
             if (Schema::hasColumn('destinations', 'is_winery')) {
                 $payload['is_winery'] = $isWinery;
+            }
+
+            if (Schema::hasColumn('destinations', 'is_hotel')) {
+                $payload['is_hotel'] = $isHotel;
+            }
+
+            if (Schema::hasColumn('destinations', 'is_bar')) {
+                $payload['is_bar'] = $isBar;
             }
 
             Destination::updateOrCreate(['id' => $dest['id']], $payload);

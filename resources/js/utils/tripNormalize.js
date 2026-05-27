@@ -1,17 +1,29 @@
 import { normalizeDestinationsOrder } from '../state/plannerStore';
 
+const PLACE_PREFIXES = [
+    { key: 'isWinery', prefix: '[bodega]' },
+    { key: 'isHotel', prefix: '[hotel]' },
+    { key: 'isBar', prefix: '[bar]' },
+];
+
 function normalizeDescriptionFlags(d) {
     const description = d.description ?? '';
     const isTextOnly = !!d.isTextOnly || description.startsWith('[sin-mapa]');
-    const isWinery = !!d.isWinery || description.startsWith('[bodega]');
     let cleanDescription = description;
+
     if (cleanDescription.startsWith('[sin-mapa] ')) {
         cleanDescription = cleanDescription.slice('[sin-mapa] '.length);
     }
-    if (cleanDescription.startsWith('[bodega] ')) {
-        cleanDescription = cleanDescription.slice('[bodega] '.length);
+
+    const flags = { isTextOnly };
+    for (const { key, prefix } of PLACE_PREFIXES) {
+        flags[key] = !!d[key] || description.startsWith(prefix);
+        if (cleanDescription.startsWith(`${prefix} `)) {
+            cleanDescription = cleanDescription.slice(`${prefix} `.length);
+        }
     }
-    return { isTextOnly, isWinery, description: cleanDescription };
+
+    return { ...flags, description: cleanDescription };
 }
 
 export function normalizeTrip(trip) {
@@ -29,6 +41,8 @@ export function normalizeTrip(trip) {
                 dayId: d.dayId ?? null,
                 isReserved: !!d.isReserved,
                 isWinery: flags.isWinery,
+                isHotel: flags.isHotel,
+                isBar: flags.isBar,
                 isTextOnly: flags.isTextOnly,
                 price: d.price != null ? d.price : null,
                 lat: flags.isTextOnly ? null : d.lat,

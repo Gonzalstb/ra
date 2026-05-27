@@ -14,7 +14,8 @@ import { parseDestPointKey } from '../services/routing';
 import { getDestSegmentNumbers } from './routePlan';
 import { formatDayDateBadge, formatDayDateRangeLong } from '../utils/dayDates';
 import {
-    hasMapCoords, isTextOnlyDestination, isWineryDestination, destinationBelongsToDay, sameDayId,
+    destinationPlaceBadgeHtml, destinationPlaceMeta, hasMapCoords, isTextOnlyDestination,
+    destinationBelongsToDay, sameDayId,
 } from '../utils/destinationHelpers';
 
 function escapeHtml(text) {
@@ -113,7 +114,8 @@ function renderPlanStopCard(d, trip, routeIndex) {
     const fromLat = routeIndex === 0 ? trip.startingPoint.lat : prev?.lat;
     const fromLng = routeIndex === 0 ? trip.startingPoint.lng : prev?.lng;
     const textOnly = isTextOnlyDestination(d);
-    const winery = isWineryDestination(d);
+    const placeBadge = destinationPlaceBadgeHtml(d, { compact: true });
+    const placeMeta = destinationPlaceMeta(d);
     const mapsAttrs = !textOnly && d.inRoute && fromLat != null
         ? `data-day-maps data-from-lat="${fromLat}" data-from-lng="${fromLng}" data-to-lat="${d.lat}" data-to-lng="${d.lng}"`
         : '';
@@ -127,7 +129,7 @@ function renderPlanStopCard(d, trip, routeIndex) {
         <div class="flex gap-2 min-w-0">
             <div class="relative shrink-0">
                 ${textOnly
-        ? `<div class="w-11 h-11 rounded-lg border border-violet-500/40 bg-violet-950/80 flex items-center justify-center text-lg">📝</div>`
+        ? `<div class="w-11 h-11 rounded-lg border border-violet-500/40 bg-violet-950/80 flex items-center justify-center text-lg">${placeMeta ? placeMeta.icon : '📝'}</div>`
         : `<img src="${escapeHtml(d.photoUrl)}" alt="" class="w-11 h-11 rounded-lg object-cover border ${reserved ? 'border-emerald-500/60' : 'border-slate-700'}" />
                 ${d.inRoute ? `<span class="absolute -bottom-1 -right-1 text-[8px] font-black bg-slate-950 text-amber-400 px-1 rounded border border-amber-500/30">#${routeIndex + 1}</span>` : ''}`}
             </div>
@@ -135,12 +137,12 @@ function renderPlanStopCard(d, trip, routeIndex) {
                 <div class="flex flex-wrap items-center gap-1">
                     <p class="text-[11px] font-bold text-white truncate max-w-full">${escapeHtml(d.name)}</p>
                     ${reserved ? '<span class="text-[8px] font-black uppercase tracking-wide text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded">Reservado</span>' : ''}
-                    ${winery ? '<span class="text-[8px] font-black uppercase tracking-wide text-purple-300 bg-purple-500/15 border border-purple-500/30 px-1.5 py-0.5 rounded">🍷 Bodega</span>' : ''}
+                    ${placeBadge}
                     ${segBadge}
                 </div>
                 ${textOnly
         ? '<p class="text-[9px] text-violet-400/90 mt-0.5">Nota del plan (sin mapa)</p>'
-        : (d.inRoute ? `<p class="text-[9px] text-amber-400/90 mt-0.5">${escapeHtml(d.duration)}</p>` : (winery ? '<p class="text-[9px] text-purple-400/90 mt-0.5">🍷 Bodega</p>' : '<p class="text-[9px] text-sky-400/80 mt-0.5">Punto libre</p>'))}
+        : (d.inRoute ? `<p class="text-[9px] text-amber-400/90 mt-0.5">${escapeHtml(d.duration)}</p>` : (placeMeta ? `<p class="text-[9px] ${placeMeta.badgeText} mt-0.5">${placeMeta.icon} ${placeMeta.label}</p>` : '<p class="text-[9px] text-sky-400/80 mt-0.5">Punto libre</p>'))}
             </div>
             ${hasMapCoords(d) ? `<button type="button" data-focus-dest="${d.id}" class="shrink-0 text-[10px] text-slate-500 hover:text-amber-400 px-1.5 min-h-[36px]" title="Ver en mapa">📍</button>` : ''}
         </div>

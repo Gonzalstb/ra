@@ -14,6 +14,9 @@ import { setActiveTab } from './tabs';
 import { focusOnLocation, getMap } from '../map/mapManager';
 import { renderSidebar } from './sidebar';
 import { hasMapCoords } from '../utils/destinationHelpers';
+import {
+    bindPlaceTypePicker, readPlaceTypeFlags, resetFormPlaceType,
+} from './placeTypeForm';
 
 function getFormStopType(form) {
     if (form.isTextOnly) return 'text';
@@ -22,6 +25,8 @@ function getFormStopType(form) {
 }
 
 export function bindForms(onMapRedraw) {
+    bindPlaceTypePicker('form');
+    resetFormPlaceType('form');
     updateFormStopTypeUI('route');
 
     document.querySelectorAll('[data-form-stop-type]').forEach((btn) => {
@@ -103,11 +108,14 @@ export function bindForms(onMapRedraw) {
                 showAlert('No se pudo añadir. Comprueba que el día existe.', 'error');
                 return;
             }
+            const placeFlags = readPlaceTypeFlags('form');
             const price = parsePriceInput(document.getElementById('form-price')?.value);
-            if (price != null) {
+            const patch = { ...placeFlags };
+            if (price != null) patch.price = price;
+            if (Object.keys(patch).length) {
                 updateActiveTrip({
                     destinations: getActiveTrip().destinations.map((d) =>
-                        d.id === newDest.id ? { ...d, price } : d
+                        (d.id === newDest.id ? { ...d, ...patch } : d)
                     ),
                 });
             }
@@ -137,7 +145,7 @@ export function bindForms(onMapRedraw) {
             isTextOnly: false,
             dayId: assignDayId,
             isReserved: false,
-            isWinery: document.getElementById('form-is-winery')?.checked ?? false,
+            ...readPlaceTypeFlags('form'),
             price: parsePriceInput(document.getElementById('form-price')?.value),
             lat: parseFloat(lat),
             lng: parseFloat(lng),
@@ -201,8 +209,7 @@ function resetAddForm() {
     document.getElementById('form-lat').value = '';
     document.getElementById('form-lng').value = '';
     document.getElementById('address-search').value = '';
-    const wineryEl = document.getElementById('form-is-winery');
-    if (wineryEl) wineryEl.checked = false;
+    resetFormPlaceType('form');
     setForm({
         name: '', description: '', photoUrl: '', duration: '',
         isRoundTrip: false, inRoute: true, isTextOnly: false, coords: { lat: '', lng: '' },
@@ -223,7 +230,7 @@ function updateFormStopTypeUI(type) {
     const inRoute = type === 'route';
 
     document.getElementById('form-map-fields')?.classList.toggle('hidden', isText);
-    document.getElementById('form-winery-field')?.classList.toggle('hidden', isText);
+    document.getElementById('form-place-type-field')?.classList.toggle('hidden', false);
     document.getElementById('route-fields')?.classList.toggle('hidden', !inRoute);
     document.getElementById('form-create-segment-wrap')?.classList.toggle('hidden', !inRoute);
     document.getElementById('form-day-field')?.classList.toggle('hidden', isText && !(getActiveTrip()?.days?.length));

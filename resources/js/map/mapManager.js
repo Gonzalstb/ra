@@ -10,7 +10,10 @@ import {
     coordsNearlyEqual,
 } from '../services/routing';
 import { mapsLinkHtml } from '../services/mapsLinks';
-import { destinationMapBadgeIcon, isWineryDestination } from '../utils/destinationHelpers';
+import {
+    destinationMapBadgeColor, destinationMapBadgeIcon, destinationPlaceBadgeHtml,
+    isPlaceEmojiBadge,
+} from '../utils/destinationHelpers';
 
 let mapInstance = null;
 const layers = { markers: [], polylines: [], labels: [] };
@@ -302,11 +305,10 @@ export async function drawMapElements() {
         const borderClass = isReserved
             ? 'border-emerald-400 ring-2 ring-emerald-400/50'
             : dest.inRoute ? 'border-amber-500' : 'border-sky-400';
-        const badgeColor = isReserved
-            ? 'bg-emerald-600'
-            : isWineryDestination(dest) ? 'bg-purple-700'
-            : dest.inRoute ? 'bg-rose-600' : 'bg-sky-600';
+        const badgeColor = destinationMapBadgeColor(dest);
         const badgeIcon = destinationMapBadgeIcon(dest, routeIndex);
+        const badgeEmojiClass = isPlaceEmojiBadge(badgeIcon) ? 'text-[10px] leading-none' : 'text-[9px]';
+        const placeBadge = destinationPlaceBadgeHtml(dest);
 
         const destIcon = L.divIcon({
             className: 'custom-pin-dest',
@@ -315,7 +317,7 @@ export async function drawMapElements() {
             <div class="w-10 h-10 border-2 ${borderClass} rounded-full overflow-hidden shadow-lg transition-transform hover:scale-110 duration-200 bg-slate-800">
               <img src="${dest.photoUrl}" class="w-full h-full object-cover" alt="" />
             </div>
-            <div class="absolute -top-1 -right-1 w-5 h-5 ${badgeColor} text-white border-2 border-white ${badgeIcon === '🍷' ? 'text-[10px] leading-none' : 'text-[9px]'} rounded-full flex items-center justify-center font-bold shadow-md">
+            <div class="absolute -top-1 -right-1 w-5 h-5 ${badgeColor} text-white border-2 border-white ${badgeEmojiClass} rounded-full flex items-center justify-center font-bold shadow-md">
               ${badgeIcon}
             </div>
           </div>`,
@@ -337,7 +339,7 @@ export async function drawMapElements() {
           <div class="p-3">
             <h3 class="font-bold text-white text-base m-0 truncate">${dest.name}</h3>
             ${isReserved ? '<span class="inline-block mt-1.5 text-[10px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-600/50 px-2 py-0.5 rounded">✓ Reservado</span>' : ''}
-            ${isWineryDestination(dest) ? '<span class="inline-block mt-1.5 ml-1 text-[10px] font-bold text-purple-200 bg-purple-950 border border-purple-500/50 px-2 py-0.5 rounded">🍷 Bodega</span>' : ''}
+            ${placeBadge ? `<span class="inline-block mt-1.5 ml-1">${placeBadge}</span>` : ''}
             <p class="text-xs text-slate-300 my-2 leading-relaxed">${dest.description}</p>
             ${dest.inRoute ? `
               <div class="text-xs text-amber-400 font-extrabold bg-slate-900/80 p-2 rounded border border-slate-800 mt-2">

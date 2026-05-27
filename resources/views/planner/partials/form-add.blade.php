@@ -46,12 +46,27 @@
         <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Descripción o notas</label>
         <textarea id="form-description" rows="3" placeholder="Detalles opcionales..." class="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-xs md:text-sm text-white outline-none transition resize-none"></textarea>
     </div>
-    <div id="form-winery-field" class="p-3 rounded-xl bg-purple-950/30 border border-purple-500/25">
-        <label class="flex items-center gap-3 cursor-pointer min-h-[44px]">
-            <input type="checkbox" id="form-is-winery" class="w-4 h-4 rounded border-slate-600 text-purple-500 focus:ring-purple-500 shrink-0" />
-            <span class="text-[11px] font-bold text-purple-200">🍷 Es una bodega</span>
-        </label>
-        <p class="text-[10px] text-slate-500 mt-1 leading-snug">En el mapa se mostrará con icono de copa en lugar de la lupa.</p>
+    <div id="form-place-type-field" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tipo de lugar <span class="text-slate-600 font-normal normal-case">(opcional)</span></span>
+        <div data-place-type-picker="form" class="grid grid-cols-2 gap-2" role="group" aria-label="Tipo de lugar">
+            <button type="button" data-place-type="" class="place-type-btn py-2.5 px-2 text-[10px] font-bold rounded-xl border transition flex flex-col items-center justify-center gap-1 min-h-[52px] bg-slate-800 text-slate-300 border-slate-600 ring-2 ring-slate-500 ring-offset-1 ring-offset-slate-950" aria-pressed="true">
+                <x-planner-icon name="map-pin" class="w-4 h-4 opacity-70" />
+                General
+            </button>
+            <button type="button" data-place-type="winery" class="place-type-btn py-2.5 px-2 text-[10px] font-bold rounded-xl border transition flex flex-col items-center justify-center gap-1 min-h-[52px] bg-slate-950 text-slate-400 border-slate-800 hover:border-purple-500/40" aria-pressed="false">
+                <span class="text-base leading-none">🍷</span>
+                Bodega
+            </button>
+            <button type="button" data-place-type="hotel" class="place-type-btn py-2.5 px-2 text-[10px] font-bold rounded-xl border transition flex flex-col items-center justify-center gap-1 min-h-[52px] bg-slate-950 text-slate-400 border-slate-800 hover:border-teal-500/40" aria-pressed="false">
+                <x-planner-icon name="bed" class="w-4 h-4" />
+                Hotel
+            </button>
+            <button type="button" data-place-type="bar" class="place-type-btn py-2.5 px-2 text-[10px] font-bold rounded-xl border transition flex flex-col items-center justify-center gap-1 min-h-[52px] bg-slate-950 text-slate-400 border-slate-800 hover:border-orange-500/40" aria-pressed="false">
+                <x-planner-icon name="drumstick" class="w-4 h-4" />
+                Bar / comida
+            </button>
+        </div>
+        <p class="text-[10px] text-slate-500 leading-snug">En el mapa verás el icono del tipo en lugar de la lupa en puntos libres.</p>
     </div>
     <div id="form-price-field" class="p-3 rounded-xl bg-violet-950/40 border border-violet-500/25 space-y-2">
         <label for="form-price" class="block text-[10px] font-bold text-violet-300 uppercase tracking-wider">Precio (opcional)</label>
