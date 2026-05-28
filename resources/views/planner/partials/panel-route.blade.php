@@ -87,4 +87,9 @@
     <p id="route-plan-empty" class="text-[11px] text-slate-500 italic py-4 text-center bg-slate-950/50 rounded-xl border border-dashed border-slate-700">
         Sin tramos. Añade paradas «En ruta» en Destinos y pulsa «+ Tramo» o «Ruta en cadena».
     </p>
+
+    <div id="trip-activity-wrap" class="space-y-2">
+        <p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Historial compartido</p>
+        <div id="trip-activity-list" class="space-y-1.5"></div>
+    </div>
 </div>

@@ -5,6 +5,7 @@ namespace App\Services\Trip;
 use App\Models\Destination;
 use App\Models\ItineraryDay;
 use App\Models\Trip;
+use App\Models\TripActivityLog;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -29,33 +30,62 @@ class TripSyncService
             }
 
             foreach ($payload['trips'] as $tripData) {
-                $trip = Trip::updateOrCreate(
-                    [
+                $existingTrip = Trip::query()
+                    ->where('id', $tripData['id'])
+                    ->first();
+
+                if ($existingTrip && ! $this->canAccessTrip($user, $existingTrip)) {
+                    continue;
+                }
+
+                $attributes = [
+                    'name' => $tripData['name'],
+                    'starting_point_name' => $tripData['startingPoint']['name'],
+                    'starting_point_lat' => $tripData['startingPoint']['lat'],
+                    'starting_point_lng' => $tripData['startingPoint']['lng'],
+                    'is_active' => $tripData['id'] === $payload['activeTripId'],
+                    'return_to_start' => $tripData['returnToStart'] ?? true,
+                    'ending_point_name' => ($tripData['returnToStart'] ?? true) || empty($tripData['endingPoint'])
+                        ? null
+                        : ($tripData['endingPoint']['name'] ?? null),
+                    'ending_point_lat' => ($tripData['returnToStart'] ?? true) || empty($tripData['endingPoint'])
+                        ? null
+                        : ($tripData['endingPoint']['lat'] ?? null),
+                    'ending_point_lng' => ($tripData['returnToStart'] ?? true) || empty($tripData['endingPoint'])
+                        ? null
+                        : ($tripData['endingPoint']['lng'] ?? null),
+                    'route_segments' => $tripData['routeSegments'] ?? [],
+                ];
+
+                if ($existingTrip) {
+                    $beforeDestinations = $existingTrip->destinations()
+                        ->get(['id', 'name'])
+                        ->map(fn (Destination $dest) => ['id' => $dest->id, 'name' => $dest->name])
+                        ->all();
+                    $beforeSegments = $existingTrip->route_segments ?? [];
+
+                    $existingTrip->update($attributes);
+                    $trip = $existingTrip;
+                } else {
+                    $trip = Trip::query()->create([
                         'id' => $tripData['id'],
                         'user_id' => $user->id,
-                    ],
-                    [
-                        'name' => $tripData['name'],
-                        'starting_point_name' => $tripData['startingPoint']['name'],
-                        'starting_point_lat' => $tripData['startingPoint']['lat'],
-                        'starting_point_lng' => $tripData['startingPoint']['lng'],
-                        'is_active' => $tripData['id'] === $payload['activeTripId'],
-                        'return_to_start' => $tripData['returnToStart'] ?? true,
-                        'ending_point_name' => ($tripData['returnToStart'] ?? true) || empty($tripData['endingPoint'])
-                            ? null
-                            : ($tripData['endingPoint']['name'] ?? null),
-                        'ending_point_lat' => ($tripData['returnToStart'] ?? true) || empty($tripData['endingPoint'])
-                            ? null
-                            : ($tripData['endingPoint']['lat'] ?? null),
-                        'ending_point_lng' => ($tripData['returnToStart'] ?? true) || empty($tripData['endingPoint'])
-                            ? null
-                            : ($tripData['endingPoint']['lng'] ?? null),
-                        'route_segments' => $tripData['routeSegments'] ?? [],
-                    ]
-                );
+                        ...$attributes,
+                    ]);
+
+                    $beforeDestinations = [];
+                    $beforeSegments = [];
+                }
 
                 $this->syncItineraryDays($trip, $tripData['days'] ?? []);
                 $this->syncDestinations($trip, $tripData['destinations'] ?? []);
+                $this->logTripActivityChanges(
+                    $user,
+                    $trip,
+                    $tripData,
+                    $beforeDestinations,
+                    $beforeSegments
+                );
             }
         });
     }
@@ -179,9 +209,126 @@ class TripSyncService
     public function tripsForUser(User $user): Collection
     {
         return Trip::query()
-            ->where('user_id', $user->id)
-            ->with(['destinations', 'itineraryDays'])
+            ->where(function ($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->orWhereHas('collaborators', function ($collabQuery) use ($user) {
+                        $collabQuery->where('users.id', $user->id);
+                    });
+            })
+            ->with(['destinations', 'itineraryDays', 'activityLogs.user'])
             ->orderBy('created_at')
             ->get();
+    }
+
+    private function canAccessTrip(User $user, Trip $trip): bool
+    {
+        if ((int) $trip->user_id === (int) $user->id) {
+            return true;
+        }
+
+        return $trip->collaborators()
+            ->where('users.id', $user->id)
+            ->exists();
+    }
+
+    private function logTripActivityChanges(
+        User $actor,
+        Trip $trip,
+        array $tripData,
+        array $beforeDestinations,
+        array $beforeSegments
+    ): void {
+        $beforeDestMap = collect($beforeDestinations)->keyBy('id');
+        $afterDestinations = collect($tripData['destinations'] ?? [])->map(function (array $dest) {
+            return [
+                'id' => $dest['id'] ?? null,
+                'name' => $dest['name'] ?? 'Punto',
+            ];
+        })->filter(fn (array $dest) => ! empty($dest['id']));
+        $afterDestMap = $afterDestinations->keyBy('id');
+
+        $addedDestinations = $afterDestMap->keys()->diff($beforeDestMap->keys());
+        foreach ($addedDestinations as $destId) {
+            $dest = $afterDestMap->get($destId);
+            $this->createActivityLog($trip, $actor, 'point_added', [
+                'pointId' => $destId,
+                'pointName' => $dest['name'] ?? 'Punto',
+            ]);
+        }
+
+        $deletedDestinations = $beforeDestMap->keys()->diff($afterDestMap->keys());
+        foreach ($deletedDestinations as $destId) {
+            $dest = $beforeDestMap->get($destId);
+            $this->createActivityLog($trip, $actor, 'point_deleted', [
+                'pointId' => $destId,
+                'pointName' => $dest['name'] ?? 'Punto',
+            ]);
+        }
+
+        $beforeSegMap = collect($beforeSegments)->keyBy('id');
+        $afterSegments = collect($tripData['routeSegments'] ?? [])
+            ->filter(fn (array $segment) => ! empty($segment['id']));
+        $afterSegMap = $afterSegments->keyBy('id');
+
+        $addedSegments = $afterSegMap->keys()->diff($beforeSegMap->keys());
+        foreach ($addedSegments as $segId) {
+            $segment = $afterSegMap->get($segId);
+            $this->createActivityLog($trip, $actor, 'segment_added', [
+                'segmentId' => $segId,
+                'fromKey' => $segment['fromKey'] ?? '',
+                'toKey' => $segment['toKey'] ?? '',
+                'fromLabel' => $this->labelForRouteKey($segment['fromKey'] ?? '', $tripData, $beforeDestMap),
+                'toLabel' => $this->labelForRouteKey($segment['toKey'] ?? '', $tripData, $beforeDestMap),
+            ]);
+        }
+
+        $deletedSegments = $beforeSegMap->keys()->diff($afterSegMap->keys());
+        foreach ($deletedSegments as $segId) {
+            $segment = $beforeSegMap->get($segId);
+            $this->createActivityLog($trip, $actor, 'segment_deleted', [
+                'segmentId' => $segId,
+                'fromKey' => $segment['fromKey'] ?? '',
+                'toKey' => $segment['toKey'] ?? '',
+                'fromLabel' => $this->labelForRouteKey($segment['fromKey'] ?? '', $tripData, $beforeDestMap),
+                'toLabel' => $this->labelForRouteKey($segment['toKey'] ?? '', $tripData, $beforeDestMap),
+            ]);
+        }
+    }
+
+    private function labelForRouteKey(string $key, array $tripData, Collection $beforeDestMap): string
+    {
+        if ($key === 'START') {
+            return $tripData['startingPoint']['name'] ?? 'Origen';
+        }
+
+        if ($key === 'END') {
+            return ($tripData['endingPoint']['name'] ?? null) ?: (($tripData['startingPoint']['name'] ?? 'Origen').' (fin)');
+        }
+
+        if (str_starts_with($key, 'DEST::')) {
+            $destId = substr($key, strlen('DEST::'));
+            $fromAfter = collect($tripData['destinations'] ?? [])
+                ->first(fn (array $dest) => ($dest['id'] ?? null) === $destId);
+            if ($fromAfter && ! empty($fromAfter['name'])) {
+                return (string) $fromAfter['name'];
+            }
+            $fromBefore = $beforeDestMap->get($destId);
+            if ($fromBefore && ! empty($fromBefore['name'])) {
+                return (string) $fromBefore['name'];
+            }
+            return 'Punto '.$destId;
+        }
+
+        return $key;
+    }
+
+    private function createActivityLog(Trip $trip, User $actor, string $action, array $payload): void
+    {
+        TripActivityLog::query()->create([
+            'trip_id' => $trip->id,
+            'user_id' => $actor->id,
+            'action' => $action,
+            'payload' => $payload,
+        ]);
     }
 }

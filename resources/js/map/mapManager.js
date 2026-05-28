@@ -14,9 +14,19 @@ import {
     destinationMapBadgeColor, destinationMapBadgeIcon, destinationPlaceBadgeHtml,
     isPlaceEmojiBadge,
 } from '../utils/destinationHelpers';
+import { ROUTE_POINT_END, ROUTE_POINT_START, destPointKey } from '../services/routing';
 
 let mapInstance = null;
 const layers = { markers: [], polylines: [], labels: [] };
+let routeMapHandlers = {
+    onSelectPoint: null,
+    onDeleteSegmentRequest: null,
+    getPendingFromPoint: null,
+};
+
+export function setRouteMapHandlers(handlers = {}) {
+    routeMapHandlers = { ...routeMapHandlers, ...handlers };
+}
 
 export function initMap(container, onMapClick) {
     if (!window.L || mapInstance) {
@@ -44,6 +54,22 @@ export function initMap(container, onMapClick) {
 
     window.L.control.zoom({ position: 'bottomright' }).addTo(map);
     map.on('click', onMapClick);
+    container.addEventListener('click', (e) => {
+        const pickBtn = e.target.closest('[data-route-pick-point]');
+        if (pickBtn) {
+            const pointKey = pickBtn.dataset.routePickPoint;
+            routeMapHandlers.onSelectPoint?.(pointKey);
+            map.closePopup();
+            return;
+        }
+
+        const delBtn = e.target.closest('[data-route-seg-delete-popup]');
+        if (delBtn) {
+            const segId = delBtn.dataset.routeSegDeletePopup;
+            routeMapHandlers.onDeleteSegmentRequest?.(segId);
+            map.closePopup();
+        }
+    });
     mapInstance = map;
 
     return map;
@@ -164,14 +190,16 @@ async function drawRouteSegments(L, trip) {
                 continue;
             }
             const returnCoords = coordsToLatLngs(reverseGeometry(refLeg.geometry));
-            layers.polylines.push(L.polyline(returnCoords, {
+            const sameRoadLine = L.polyline(returnCoords, {
                 color: '#a855f7',
                 weight: 4.5,
                 opacity: 0.92,
                 dashArray: '10, 8',
                 lineCap: 'round',
                 lineJoin: 'round',
-            }).addTo(mapInstance));
+            }).addTo(mapInstance);
+            bindSegmentLongPress(sameRoadLine, seg.id);
+            layers.polylines.push(sameRoadLine);
 
             const durationLabel = formatDuration(refLeg.durationMin ?? 0);
             if (seg.toDestId) {
@@ -200,13 +228,15 @@ async function drawRouteSegments(L, trip) {
         legBySegmentId.set(seg.id, leg);
         const lineCoords = coordsToLatLngs(leg.geometry);
 
-        layers.polylines.push(L.polyline(lineCoords, {
+        const segmentLine = L.polyline(lineCoords, {
             color: '#10b981',
             weight: 5,
             opacity: 0.92,
             lineCap: 'round',
             lineJoin: 'round',
-        }).addTo(mapInstance));
+        }).addTo(mapInstance);
+        bindSegmentLongPress(segmentLine, seg.id);
+        layers.polylines.push(segmentLine);
 
         if (seg.toDestId) {
             durationById[seg.toDestId] = leg.durationFormatted ?? formatDuration(leg.durationMin);
@@ -225,6 +255,37 @@ async function drawRouteSegments(L, trip) {
 
     persistDurationsIfChanged(durationById);
     return allOk;
+}
+
+function bindSegmentLongPress(line, segId) {
+    let pressTimer = null;
+    let pressLatLng = null;
+    const clearPress = () => {
+        if (pressTimer) clearTimeout(pressTimer);
+        pressTimer = null;
+    };
+
+    const startPress = (e) => {
+        clearPress();
+        pressLatLng = e.latlng;
+        pressTimer = setTimeout(() => {
+            if (!pressLatLng) return;
+            window.L.popup({
+                closeButton: false,
+                autoClose: true,
+                className: 'route-segment-delete-popup',
+            })
+                .setLatLng(pressLatLng)
+                .setContent(`<button type="button" data-route-seg-delete-popup="${segId}" class="px-2.5 py-1.5 rounded-md bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold">🗑 Eliminar tramo</button>`)
+                .openOn(mapInstance);
+        }, 650);
+    };
+
+    line.on('mousedown', startPress);
+    line.on('touchstart', startPress);
+    line.on('mouseup', clearPress);
+    line.on('mouseout', clearPress);
+    line.on('touchend', clearPress);
 }
 
 export async function applyOsrmDurationsToTrip() {
@@ -271,6 +332,7 @@ export async function drawMapElements() {
         <div class="p-2 font-sans text-slate-200">
           <span class="bg-emerald-950 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-800">Punto de Origen</span>
           <h4 class="font-bold text-slate-100 text-sm mt-1.5">${startingPoint.name}</h4>
+          <button type="button" data-route-pick-point="${ROUTE_POINT_START}" class="mt-2 px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold">Seleccionar para tramo</button>
         </div>`);
 
     layers.markers.push(startMarker);
@@ -292,7 +354,15 @@ export async function drawMapElements() {
             iconSize: [32, 32],
             iconAnchor: [16, 16],
         });
-        layers.markers.push(L.marker([endPoint.lat, endPoint.lng], { icon: endIcon }).addTo(mapInstance));
+        const endMarker = L.marker([endPoint.lat, endPoint.lng], { icon: endIcon })
+            .addTo(mapInstance)
+            .bindPopup(`
+            <div class="p-2 font-sans text-slate-200">
+              <span class="bg-amber-950 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-700">Punto final</span>
+              <h4 class="font-bold text-slate-100 text-sm mt-1.5">${endPoint.name}</h4>
+              <button type="button" data-route-pick-point="${ROUTE_POINT_END}" class="mt-2 px-2 py-1 rounded bg-amber-600 hover:bg-amber-500 text-slate-950 text-[10px] font-bold">Seleccionar para tramo</button>
+            </div>`);
+        layers.markers.push(endMarker);
     }
 
     const routeDestinations = destinations.filter((d) => d.inRoute && d.lat != null && d.lng != null && !d.isTextOnly);
@@ -345,7 +415,9 @@ export async function drawMapElements() {
               <div class="text-xs text-amber-400 font-extrabold bg-slate-900/80 p-2 rounded border border-slate-800 mt-2">
                 🚗 ${dest.duration} <span class="text-slate-500 font-normal">· en coche</span>
               </div>
-              ${mapsBtn}` : ''}
+              ${mapsBtn}
+              <button type="button" data-route-pick-point="${destPointKey(dest.id)}" class="mt-2 px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold">Seleccionar para tramo</button>
+              ` : ''}
           </div>
         </div>`;
 
@@ -361,16 +433,40 @@ export async function drawMapElements() {
         try {
             const ok = await drawRouteSegments(L, trip);
             if (!ok) {
-                labelAtCoord(
-                    L,
-                    startingPoint.lat,
-                    startingPoint.lng,
-                    '<div class="px-2 py-1 rounded-md bg-rose-950/95 border border-rose-500/40 text-[10px] text-rose-200 font-bold">No se pudo trazar la ruta en coche. Reintenta en unos segundos.</div>',
-                    [120, -8]
-                );
+                // Evitamos fijar avisos visuales en el mapa cuando el trazado falla.
             }
         } finally {
             setRoutingLoading(false);
+        }
+    }
+
+    const pending = routeMapHandlers.getPendingFromPoint?.();
+    if (pending) {
+        const candidates = [
+            { lat: startingPoint.lat, lng: startingPoint.lng, key: ROUTE_POINT_START },
+            ...routeDestinations.map((d) => ({ lat: d.lat, lng: d.lng, key: destPointKey(d.id) })),
+        ];
+        if (showEndMarker) {
+            candidates.push({ lat: endPoint.lat, lng: endPoint.lng, key: ROUTE_POINT_END });
+        }
+        const nearest = candidates
+            .filter((c) => c.key !== pending.key)
+            .sort((a, b) => ((a.lat - pending.lat) ** 2 + (a.lng - pending.lng) ** 2) - ((b.lat - pending.lat) ** 2 + (b.lng - pending.lng) ** 2))[0];
+
+        if (nearest) {
+            layers.polylines.push(L.polyline([[pending.lat, pending.lng], [nearest.lat, nearest.lng]], {
+                color: '#f59e0b',
+                weight: 3,
+                opacity: 0.8,
+                dashArray: '6, 6',
+            }).addTo(mapInstance));
+            labelAtCoord(
+                L,
+                pending.lat,
+                pending.lng,
+                '<div class="px-2 py-1 rounded-md bg-amber-950/95 border border-amber-500/40 text-[10px] text-amber-200 font-bold">Punto inicial seleccionado. Elige el segundo punto.</div>',
+                [110, 12]
+            );
         }
     }
 }

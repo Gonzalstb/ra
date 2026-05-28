@@ -5,6 +5,7 @@ namespace App\Services\Trip;
 use App\Models\Destination;
 use App\Models\ItineraryDay;
 use App\Models\Trip;
+use App\Models\TripActivityLog;
 
 class TripFormatter
 {
@@ -29,6 +30,21 @@ class TripFormatter
             'routeSegments' => $trip->route_segments ?? [],
             'days' => $trip->itineraryDays->map(fn (ItineraryDay $day) => $this->formatDay($day))->values()->all(),
             'destinations' => $trip->destinations->map(fn (Destination $d) => $this->formatDestination($d))->values()->all(),
+            'activityLogs' => $trip->activityLogs
+                ->take(80)
+                ->map(fn (TripActivityLog $log) => [
+                    'id' => $log->id,
+                    'action' => $log->action,
+                    'payload' => $log->payload ?? [],
+                    'createdAt' => $log->created_at?->toIso8601String(),
+                    'user' => $log->user ? [
+                        'id' => $log->user->id,
+                        'name' => $log->user->name,
+                        'email' => $log->user->email,
+                    ] : null,
+                ])
+                ->values()
+                ->all(),
         ];
     }
 

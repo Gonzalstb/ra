@@ -1,5 +1,5 @@
 import {
-    getState, getActiveTrip, setState, updateActiveTrip,
+    getState, getActiveTrip, setState, setStateFromServer, updateActiveTrip,
     reorderRouteDestination, setDestinationRouteStatus, splitDestinations,
 } from '../state/plannerStore';
 import { showAlert } from './alerts';
@@ -13,6 +13,8 @@ import {
 } from '../utils/destinationHelpers';
 import { openDirections } from '../services/mapsLinks';
 import { icon } from './icons';
+import { shareTrip, fetchTrips } from '../api/tripsApi';
+import { normalizeTrip } from '../utils/tripNormalize';
 
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -153,7 +155,13 @@ export function renderSidebar() {
         select.innerHTML = trips.map((t) => `<option value="${t.id}" ${t.id === activeTripId ? 'selected' : ''}>💼 ${escapeHtml(t.name)}</option>`).join('');
     }
 
-    document.getElementById('btn-delete-trip')?.classList.toggle('hidden', trips.length <= 1);
+    const canManageTrip = trip.isOwner !== false;
+    document.getElementById('btn-delete-trip')?.classList.toggle('hidden', trips.length <= 1 || !canManageTrip);
+    document.getElementById('trip-share-block')?.classList.toggle('hidden', !trip.canShare);
+    if (!trip.canShare) {
+        const shareEmail = document.getElementById('trip-share-email');
+        if (shareEmail) shareEmail.value = '';
+    }
 
     const routeList = document.getElementById('route-list');
     const standaloneList = document.getElementById('standalone-list');
@@ -252,6 +260,41 @@ export function bindSidebarListEvents(onMapRedraw) {
             } else if (dest?.isTextOnly) {
                 setActiveTab('itinerary');
             }
+        }
+    });
+
+    document.getElementById('btn-share-trip')?.addEventListener('click', async () => {
+        const trip = getActiveTrip();
+        if (!trip) return;
+        if (!trip.canShare) {
+            showAlert('Solo el propietario puede compartir este viaje.', 'error');
+            return;
+        }
+
+        const emailEl = document.getElementById('trip-share-email');
+        const email = emailEl?.value?.trim()?.toLowerCase() ?? '';
+        if (!email) {
+            showAlert('Escribe el email del usuario con el que compartirás el viaje.', 'error');
+            return;
+        }
+
+        const shareBtn = document.getElementById('btn-share-trip');
+        if (shareBtn) shareBtn.disabled = true;
+        try {
+            const result = await shareTrip(trip.id, email);
+            showAlert(result.message || 'Viaje compartido correctamente.', 'success');
+            if (emailEl) emailEl.value = '';
+
+            const data = await fetchTrips();
+            const trips = (data.trips ?? []).map(normalizeTrip);
+            setStateFromServer({
+                trips,
+                activeTripId: data.activeTripId ?? trip.id,
+            });
+        } catch (err) {
+            showAlert(err?.message || 'No se pudo compartir el viaje.', 'error');
+        } finally {
+            if (shareBtn) shareBtn.disabled = false;
         }
     });
 }

@@ -154,6 +154,10 @@ export function bindModals(handlers) {
             id: `trip-${Date.now()}`,
             name,
             startingPoint: { lat: origin.lat, lng: origin.lng, name: origin.name },
+            ownerId: null,
+            isOwner: true,
+            canShare: true,
+            activityLogs: [],
             returnToStart: true,
             endingPoint: null,
             routeSegments: [],
@@ -173,6 +177,10 @@ export function bindModals(handlers) {
     document.getElementById('btn-delete-trip')?.addEventListener('click', () => {
         const trip = getActiveTrip();
         if (!trip) return;
+        if (trip.isOwner === false) {
+            showAlert('Solo el propietario puede eliminar el viaje.', 'error');
+            return;
+        }
         setUi({ deleteTripModal: { isOpen: true, targetId: trip.id, targetName: trip.name } });
         document.getElementById('delete-trip-name').textContent = trip.name;
         toggleModal('modal-delete-trip', true);
@@ -185,6 +193,12 @@ export function bindModals(handlers) {
     document.getElementById('btn-confirm-delete-trip')?.addEventListener('click', () => {
         const { deleteTripModal } = getState().ui;
         const { trips: allTrips, activeTripId } = getState();
+        const targetTrip = allTrips.find((t) => t.id === deleteTripModal.targetId);
+        if (targetTrip && targetTrip.isOwner === false) {
+            showAlert('Solo el propietario puede eliminar el viaje.', 'error');
+            toggleModal('modal-delete-trip', false);
+            return;
+        }
         if (allTrips.length <= 1) {
             showAlert('No puedes eliminar el único viaje disponible.', 'error');
             toggleModal('modal-delete-trip', false);

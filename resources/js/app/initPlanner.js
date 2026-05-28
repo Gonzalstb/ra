@@ -18,8 +18,9 @@ import { scheduleSync, retrySync } from '../services/syncScheduler';
 import { bindMobilePanel } from '../ui/mobilePanel';
 import {
     initMap, drawMapElements, waitForLeaflet, invalidateSize, fitTripBounds,
-    applyOsrmDurationsToTrip,
+    applyOsrmDurationsToTrip, setRouteMapHandlers,
 } from '../map/mapManager';
+import { getPendingMapRoutePoint, handleMapRoutePointSelection, requestDeleteRouteSegment } from '../ui/routePlan';
 
 let lastRenderedTab = '';
 let lastMapFingerprint = '';
@@ -135,6 +136,11 @@ export async function initPlanner() {
     bindRouteDragDrop(redraw);
     bindTripReturn(redraw);
     bindRoutePlan(redraw);
+    setRouteMapHandlers({
+        onSelectPoint: (pointKey) => handleMapRoutePointSelection(pointKey, redraw),
+        onDeleteSegmentRequest: (segId) => requestDeleteRouteSegment(segId, redraw),
+        getPendingFromPoint: () => getPendingMapRoutePoint(),
+    });
     renderGallery();
 
     document.getElementById('saving-badge')?.addEventListener('click', retrySync);

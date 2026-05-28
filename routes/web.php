@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function () {
     Route::get('trips/print', PrintItineraryController::class)->name('trips.print');
     Route::get('trips', [TripController::class, 'index']);
     Route::put('trips/sync', [TripController::class, 'sync']);
+    Route::post('trips/{trip}/share', [TripController::class, 'share']);
     Route::get('airports/countries', [AirportController::class, 'countries']);
     Route::get('airports', [AirportController::class, 'index']);
     Route::get('geocode', GeocodeController::class)->middleware('throttle:30,1');

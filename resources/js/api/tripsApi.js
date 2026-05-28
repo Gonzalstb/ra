@@ -7,7 +7,14 @@ async function handleResponse(response) {
     }
 
     if (!response.ok) {
-        throw new Error('Error en la petición al servidor');
+        let message = 'Error en la petición al servidor';
+        try {
+            const payload = await response.json();
+            if (payload?.message) message = payload.message;
+        } catch {
+            // keep default message
+        }
+        throw new Error(message);
     }
 
     return response.json();
@@ -32,6 +39,21 @@ export async function syncTrips(trips, activeTripId, deletedTripIds = []) {
         },
         credentials: 'same-origin',
         body: JSON.stringify({ trips, activeTripId, deletedTripIds }),
+    });
+
+    return handleResponse(response);
+}
+
+export async function shareTrip(tripId, email) {
+    const response = await fetch(`/trips/${encodeURIComponent(tripId)}/share`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ email }),
     });
 
     return handleResponse(response);

@@ -5,7 +5,7 @@
     Panel
 </button>
 
-<aside id="sidebar" class="mobile-panel-closed flex flex-col bg-slate-950 border-slate-800 shadow-2xl shrink-0 z-50 fixed inset-x-0 bottom-16 lg:static lg:inset-auto lg:bottom-auto w-full lg:w-[450px] lg:min-w-[450px] lg:max-w-[450px] max-h-[min(88vh,calc(100dvh-5rem))] lg:max-h-none lg:h-full min-h-0 rounded-t-2xl lg:rounded-none border-t lg:border-t-0 lg:border-r pointer-events-none transition-transform duration-300 ease-out lg:translate-y-0 lg:pointer-events-auto">
+<aside id="sidebar" class="mobile-panel-closed flex flex-col bg-slate-950 border-slate-800 shadow-2xl shrink-0 z-50 fixed inset-x-0 bottom-16 lg:static lg:inset-auto lg:bottom-auto w-full lg:w-[clamp(340px,32vw,450px)] lg:min-w-[340px] lg:max-w-[450px] max-h-[min(88vh,calc(100dvh-5rem))] lg:max-h-none lg:h-full min-h-0 rounded-t-2xl lg:rounded-none border-t lg:border-t-0 lg:border-r pointer-events-none transition-transform duration-300 ease-out lg:translate-y-0 lg:pointer-events-auto">
     <div class="lg:hidden flex flex-col items-center pt-2 pb-1 shrink-0">
         <div class="w-10 h-1 bg-slate-700 rounded-full"></div>
         <button type="button" id="mobile-panel-close" class="mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cerrar panel ▼</button>
@@ -55,6 +55,18 @@
             </div>
         </div>
         <select id="trip-select" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-3 py-2 text-xs md:text-sm focus:border-amber-500 outline-none cursor-pointer transition"></select>
+        <div id="trip-share-block" class="hidden p-2.5 rounded-xl border border-slate-800 bg-slate-950/80 space-y-2">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Compartir viaje</p>
+            <div class="flex gap-2">
+                <input type="email" id="trip-share-email" placeholder="email@ejemplo.com"
+                    class="flex-1 min-h-[40px] bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-lg px-3 py-2 text-xs text-white outline-none" />
+                <button type="button" id="btn-share-trip"
+                    class="min-h-[40px] px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition shrink-0">
+                    Compartir
+                </button>
+            </div>
+            <p class="text-[10px] text-slate-500 leading-snug">Solo usuarios registrados. Tendrán acceso completo de edición.</p>
+        </div>
     </div>
 
     <div class="px-4 md:px-6 py-3 bg-slate-900/60 border-b border-slate-800 flex items-center justify-between gap-4 shrink-0">

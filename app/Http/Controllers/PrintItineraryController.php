@@ -18,7 +18,7 @@ class PrintItineraryController extends Controller
         return view('planner.print', [
             'user' => $request->user(),
             'trip' => $trip ? $formatter->format($trip) : null,
-            'trips' => $trips->map(fn ($t) => $formatter->format($t))->values()->all(),
+            'trips' => $queryService->toApiPayload($trips, $request->user())['trips'],
         ]);
     }
 }

@@ -15,10 +15,59 @@ import { setActiveTab } from './tabs';
 import { openEditStartModal } from './modals';
 import { focusOnLocation, getMap } from '../map/mapManager';
 
+let pendingMapFromKey = null;
+
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text ?? '';
     return div.innerHTML;
+}
+
+function formatLogDate(isoDate) {
+    if (!isoDate) return 'ahora';
+    const date = new Date(isoDate);
+    if (Number.isNaN(date.getTime())) return 'ahora';
+    return new Intl.DateTimeFormat('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(date);
+}
+
+function historyMessage(log) {
+    const userName = log?.user?.name ?? 'Usuario';
+    const payload = log?.payload ?? {};
+    if (log.action === 'point_added') {
+        return `📍 ${userName} añadió el punto «${payload.pointName ?? 'Punto'}».`;
+    }
+    if (log.action === 'point_deleted') {
+        return `🗑️ ${userName} borró el punto «${payload.pointName ?? 'Punto'}».`;
+    }
+    if (log.action === 'segment_added') {
+        return `🛣️ ${userName} creó tramo: ${payload.fromLabel ?? 'Origen'} → ${payload.toLabel ?? 'Destino'}.`;
+    }
+    if (log.action === 'segment_deleted') {
+        return `❌ ${userName} eliminó tramo: ${payload.fromLabel ?? 'Origen'} → ${payload.toLabel ?? 'Destino'}.`;
+    }
+    return `ℹ️ ${userName} actualizó el viaje.`;
+}
+
+function renderTripActivity(trip) {
+    const list = document.getElementById('trip-activity-list');
+    if (!list) return;
+    const logs = trip.activityLogs ?? [];
+    if (!logs.length) {
+        list.innerHTML = '<p class="text-[10px] text-slate-500 italic py-2 px-2 bg-slate-950/40 rounded border border-slate-800/70">Aún no hay acciones registradas.</p>';
+        return;
+    }
+
+    list.innerHTML = logs.slice(0, 30).map((log) => `
+        <article class="rounded-lg border border-slate-800 bg-slate-950/70 px-2.5 py-2">
+            <p class="text-[10px] text-slate-200 leading-snug">${escapeHtml(historyMessage(log))}</p>
+            <p class="text-[9px] text-slate-500 mt-1">${escapeHtml(formatLogDate(log.createdAt))}</p>
+        </article>
+    `).join('');
 }
 
 function labelForKey(trip, key) {
@@ -62,6 +111,70 @@ function updateSegments(mutator, onMapRedraw) {
     renderRoutePlan();
     onMapRedraw?.();
     scheduleSync();
+}
+
+function addSegmentFromMapPoints(fromKey, toKey, onMapRedraw) {
+    if (!fromKey || !toKey || fromKey === toKey) return false;
+    const trip = getActiveTrip();
+    if (!trip) return false;
+    const exists = (trip.routeSegments ?? []).some((s) => s.fromKey === fromKey && s.toKey === toKey);
+    if (exists) return false;
+
+    updateSegments((segments) => {
+        segments.push({
+            id: `seg-${Date.now()}`,
+            fromKey,
+            toKey,
+            sameRoadAs: null,
+        });
+    }, onMapRedraw);
+    return true;
+}
+
+export function getPendingMapRoutePoint() {
+    const trip = getActiveTrip();
+    if (!trip || !pendingMapFromKey) return null;
+    const point = resolveRoutePoint(trip, pendingMapFromKey);
+    return point ? { ...point, key: pendingMapFromKey } : null;
+}
+
+export function handleMapRoutePointSelection(pointKey, onMapRedraw) {
+    if (!pointKey) return;
+    const trip = getActiveTrip();
+    if (!trip) return;
+    if (!resolveRoutePoint(trip, pointKey)) return;
+
+    if (!pendingMapFromKey) {
+        pendingMapFromKey = pointKey;
+        onMapRedraw?.();
+        showAlert('Punto inicial seleccionado. Ahora elige el segundo punto.', 'info');
+        return;
+    }
+
+    if (pendingMapFromKey === pointKey) {
+        pendingMapFromKey = null;
+        onMapRedraw?.();
+        showAlert('Selección cancelada.', 'info');
+        return;
+    }
+
+    const fromKey = pendingMapFromKey;
+    pendingMapFromKey = null;
+    const created = addSegmentFromMapPoints(fromKey, pointKey, onMapRedraw);
+    if (created) {
+        showAlert('Tramo añadido desde el mapa.', 'success');
+    } else {
+        showAlert('No se añadió el tramo (ya existía o era inválido).', 'info');
+    }
+}
+
+export function requestDeleteRouteSegment(segId, onMapRedraw) {
+    if (!segId) return;
+    const trip = getActiveTrip();
+    const exists = (trip?.routeSegments ?? []).some((s) => s.id === segId);
+    if (!exists) return;
+    updateSegments((segments) => segments.filter((s) => s.id !== segId), onMapRedraw);
+    showAlert('Tramo eliminado.', 'info');
 }
 
 function renderRoutePanelOrigin(trip) {
@@ -157,6 +270,7 @@ export function renderRoutePlan() {
     renderRoutePanelOrigin(trip);
     renderRouteTimeline(trip);
     renderQuickNextSegment(trip);
+    renderTripActivity(trip);
     renderMapRouteChip(trip);
     updateMapRouteGuide(trip);
 

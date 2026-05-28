@@ -30,6 +30,10 @@ export function normalizeTrip(trip) {
     return {
         ...trip,
         days: trip.days ?? [],
+        ownerId: trip.ownerId ?? null,
+        isOwner: trip.isOwner !== false,
+        canShare: trip.canShare !== false,
+        activityLogs: Array.isArray(trip.activityLogs) ? trip.activityLogs : [],
         returnToStart: trip.returnToStart !== false,
         endingPoint: trip.endingPoint ?? null,
         routeSegments: trip.routeSegments ?? [],

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Trip extends Model
@@ -45,6 +46,12 @@ class Trip extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function collaborators(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'trip_user')
+            ->withTimestamps();
+    }
+
     public function destinations(): HasMany
     {
         return $this->hasMany(Destination::class)->orderBy('sort_order');
@@ -53,5 +60,10 @@ class Trip extends Model
     public function itineraryDays(): HasMany
     {
         return $this->hasMany(ItineraryDay::class)->orderBy('sort_order');
+    }
+
+    public function activityLogs(): HasMany
+    {
+        return $this->hasMany(TripActivityLog::class)->latest();
     }
 }
