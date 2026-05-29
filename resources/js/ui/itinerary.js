@@ -14,8 +14,9 @@ import { parseDestPointKey } from '../services/routing';
 import { getDestSegmentNumbers } from './routePlan';
 import { formatDayDateBadge, formatDayDateRangeLong } from '../utils/dayDates';
 import {
-    destinationPlaceBadgeHtml, destinationPlaceMeta, hasMapCoords, isTextOnlyDestination,
-    destinationBelongsToDay, sameDayId,
+    destinationPlaceBadgeHtml, destinationPlaceMeta, destinationPriceBadgeHtml,
+    hasMapCoords, isTextOnlyDestination, destinationBelongsToDay, sameDayId,
+    canTogglePriceOnStop, toggleDestinationPriceBadge,
 } from '../utils/destinationHelpers';
 
 function escapeHtml(text) {
@@ -115,8 +116,12 @@ function renderPlanStopCard(d, trip, routeIndex) {
     const fromLat = routeIndex === 0 ? trip.startingPoint.lat : prev?.lat;
     const fromLng = routeIndex === 0 ? trip.startingPoint.lng : prev?.lng;
     const textOnly = isTextOnlyDestination(d);
-    const placeBadge = destinationPlaceBadgeHtml(d, { compact: true });
     const placeMeta = destinationPlaceMeta(d);
+    const placeBadge = destinationPlaceBadgeHtml(d, { compact: true });
+    const priceBadge = canTogglePriceOnStop(d) ? destinationPriceBadgeHtml(d, { compact: true }) : '';
+    const priceToggleAttrs = canTogglePriceOnStop(d)
+        ? ` data-toggle-price-on-stop="${d.id}" role="button" tabindex="0" title="Ver precio"`
+        : '';
     const mapsAttrs = !textOnly && d.inRoute && fromLat != null
         ? `data-day-maps data-from-lat="${fromLat}" data-from-lng="${fromLng}" data-to-lat="${d.lat}" data-to-lng="${d.lng}"`
         : '';
@@ -143,12 +148,13 @@ function renderPlanStopCard(d, trip, routeIndex) {
                 ${d.inRoute ? `<span class="absolute -bottom-1 -right-1 text-[8px] font-black bg-slate-950 text-amber-400 px-1 rounded border border-amber-500/30">#${routeIndex + 1}</span>` : ''}`}
             </div>
             <div class="flex-1 min-w-0">
-                <div class="flex flex-wrap items-center gap-1">
+                <div class="flex flex-wrap items-center gap-1${canTogglePriceOnStop(d) ? ' cursor-pointer' : ''}"${priceToggleAttrs}>
                     <p class="text-[11px] font-bold text-white truncate max-w-full">${escapeHtml(d.name)}</p>
                     ${reserved ? '<span class="text-[8px] font-black uppercase tracking-wide text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded">Reservado</span>' : ''}
                     ${favoriteBtn}
                     ${siteBtn}
                     ${placeBadge}
+                    ${priceBadge}
                     ${segBadge}
                 </div>
                 ${textOnly
@@ -442,6 +448,14 @@ export function bindItinerary(onMapRedraw) {
     });
 
     document.getElementById('itinerary-days-list')?.addEventListener('click', (e) => {
+        const priceStop = e.target.closest('[data-toggle-price-on-stop]');
+        if (priceStop && !e.target.closest('button')) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleDestinationPriceBadge(priceStop.dataset.togglePriceOnStop);
+            return;
+        }
+
         const favBtn = e.target.closest('[data-toggle-favorite]');
         if (favBtn) {
             e.preventDefault();

@@ -13,7 +13,8 @@ import { mapsLinkHtml } from '../services/mapsLinks';
 import { showAlert } from '../ui/alerts';
 import {
     destinationMapBadgeColor, destinationMapBadgeIcon, destinationPlaceBadgeHtml,
-    isPlaceEmojiBadge,
+    destinationPriceBadgeHtml, isPlaceEmojiBadge, canTogglePriceOnStop,
+    toggleDestinationPriceBadge,
 } from '../utils/destinationHelpers';
 import { ROUTE_POINT_END, ROUTE_POINT_START, destPointKey } from '../services/routing';
 
@@ -69,6 +70,13 @@ export function initMap(container, onMapClick) {
             const segId = delBtn.dataset.routeSegDeletePopup;
             routeMapHandlers.onDeleteSegmentRequest?.(segId);
             map.closePopup();
+            return;
+        }
+
+        const priceStop = e.target.closest('[data-toggle-price-on-stop]');
+        if (priceStop) {
+            e.stopPropagation();
+            toggleDestinationPriceBadge(priceStop.dataset.togglePriceOnStop);
         }
     });
     mapInstance = map;
@@ -428,6 +436,10 @@ export async function drawMapElements() {
             ? '<div class="absolute -top-1 -left-1 w-5 h-5 bg-amber-500 text-white border-2 border-white text-[9px] rounded-full flex items-center justify-center font-bold shadow-md">★</div>'
             : '';
         const placeBadge = destinationPlaceBadgeHtml(dest);
+        const priceBadge = canTogglePriceOnStop(dest) ? destinationPriceBadgeHtml(dest) : '';
+        const popupBadges = placeBadge
+            ? `<span class="inline-flex flex-wrap items-center gap-1 mt-1.5${canTogglePriceOnStop(dest) ? ' cursor-pointer' : ''}"${canTogglePriceOnStop(dest) ? ` data-toggle-price-on-stop="${dest.id}" role="button" tabindex="0" title="Ver precio"` : ''}>${placeBadge}${priceBadge}</span>`
+            : '';
 
         const destIcon = L.divIcon({
             className: 'custom-pin-dest',
@@ -460,7 +472,7 @@ export async function drawMapElements() {
             <h3 class="font-bold text-white text-base m-0 truncate">${dest.name}</h3>
             ${isReserved ? '<span class="inline-block mt-1.5 text-[10px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-600/50 px-2 py-0.5 rounded">✓ Reservado</span>' : ''}
             ${dest.isFavorite ? '<span class="inline-block mt-1.5 ml-1 text-[10px] font-bold text-amber-300 bg-amber-950 border border-amber-500/50 px-2 py-0.5 rounded">★ Favorito</span>' : ''}
-            ${placeBadge ? `<span class="inline-block mt-1.5 ml-1">${placeBadge}</span>` : ''}
+            ${popupBadges}
             <p class="text-xs text-slate-300 my-2 leading-relaxed">${dest.description}</p>
             <p class="text-[10px] text-slate-400 -mt-1">Mantén pulsada la chincheta para marcar/quitar favorito.</p>
             ${dest.inRoute ? `

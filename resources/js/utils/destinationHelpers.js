@@ -1,3 +1,5 @@
+import { formatPrice } from './formatPrice';
+
 export const DESTINATION_PLACE_META = {
     winery: {
         icon: '🍷',
@@ -79,11 +81,32 @@ export function destinationPlaceMeta(dest) {
     return type ? DESTINATION_PLACE_META[type] : null;
 }
 
+export function hasDisplayPrice(dest) {
+    return dest?.price != null && dest?.price !== '';
+}
+
+export function destinationPriceBadgeHtml(dest, { compact = false } = {}) {
+    if (!hasDisplayPrice(dest)) return '';
+    const size = compact ? 'text-[8px] font-black uppercase tracking-wide' : 'text-[9px] font-bold';
+    return `<span data-price-badge="${dest.id}" class="hidden ${size} text-violet-300 bg-violet-950/80 px-1.5 py-0.5 rounded border border-violet-500/40">${formatPrice(dest.price)}</span>`;
+}
+
 export function destinationPlaceBadgeHtml(dest, { compact = false } = {}) {
     const meta = destinationPlaceMeta(dest);
     if (!meta) return '';
     const size = compact ? 'text-[8px] font-black uppercase tracking-wide' : 'text-[9px] font-bold';
     return `<span class="${size} ${meta.badgeText} ${meta.badgeBg} px-1.5 py-0.5 rounded border ${meta.badgeBorder}">${meta.icon} ${meta.label}</span>`;
+}
+
+/** Muestra u oculta el badge de precio junto al tipo de lugar (hotel, bodega…). */
+export function toggleDestinationPriceBadge(destId) {
+    document.querySelectorAll(`[data-price-badge="${destId}"]`).forEach((el) => {
+        el.classList.toggle('hidden');
+    });
+}
+
+export function canTogglePriceOnStop(dest) {
+    return !!destinationPlaceMeta(dest) && hasDisplayPrice(dest);
 }
 
 export function destinationFreePoiLabel(dest) {

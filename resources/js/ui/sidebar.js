@@ -10,7 +10,8 @@ import { openDeleteDestModal, openEditDestModal } from './modals';
 import { renderTripReturnSettings } from './tripReturn';
 import { renderRoutePlan, getDestSegmentNumbers } from './routePlan';
 import {
-    destinationFreePoiLabel, destinationPlaceBadgeHtml, isTextOnlyDestination,
+    destinationFreePoiLabel, destinationPlaceBadgeHtml, destinationPriceBadgeHtml,
+    isTextOnlyDestination, canTogglePriceOnStop, toggleDestinationPriceBadge,
 } from '../utils/destinationHelpers';
 import { openDirections } from '../services/mapsLinks';
 import { icon } from './icons';
@@ -76,6 +77,10 @@ function renderDestCard(dest, index, type, trip, routeDestinations = [], routeCo
     const isRoute = type === 'route';
     const textOnly = isTextOnlyDestination(dest);
     const placeBadge = destinationPlaceBadgeHtml(dest);
+    const priceBadge = canTogglePriceOnStop(dest) ? destinationPriceBadgeHtml(dest) : '';
+    const priceToggleAttrs = canTogglePriceOnStop(dest)
+        ? ` data-toggle-price-on-stop="${dest.id}" role="button" tabindex="0" title="Ver precio"`
+        : '';
     const favorite = !!dest.isFavorite;
     const favoriteBtn = `<button type="button" data-toggle-favorite="${dest.id}" class="text-[9px] font-bold px-1.5 py-0.5 rounded border transition ${
         favorite
@@ -113,13 +118,14 @@ function renderDestCard(dest, index, type, trip, routeDestinations = [], routeCo
           </div>
           <div class="flex-1 min-w-0 text-left">
             <h4 class="font-bold text-sm ${isRoute ? 'text-white' : 'text-slate-300'} truncate">${escapeHtml(dest.name)}</h4>
-            <div class="flex flex-wrap gap-1 mt-0.5">
+            <div class="flex flex-wrap gap-1 mt-0.5${canTogglePriceOnStop(dest) ? ' cursor-pointer' : ''}"${priceToggleAttrs}>
             ${dayTitle ? `<span class="text-[9px] font-bold text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20 max-w-full truncate">${escapeHtml(dayTitle)}</span>` : ''}
             ${segBadge}
             ${dest.isReserved ? '<span class="text-[9px] font-bold text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30">Reservado</span>' : ''}
             ${favoriteBtn}
             ${siteBtn}
             ${placeBadge}
+            ${priceBadge}
             </div>
             <p class="text-[11px] text-slate-400 line-clamp-2 mt-0.5 leading-snug">${escapeHtml(dest.description)}</p>
           </div>
@@ -199,6 +205,13 @@ export function bindSidebarListEvents(onMapRedraw) {
     });
 
     document.getElementById('sidebar-content')?.addEventListener('click', (e) => {
+        const priceStop = e.target.closest('[data-toggle-price-on-stop]');
+        if (priceStop && !e.target.closest('button')) {
+            e.stopPropagation();
+            toggleDestinationPriceBadge(priceStop.dataset.togglePriceOnStop);
+            return;
+        }
+
         const favBtn = e.target.closest('[data-toggle-favorite]');
         if (favBtn) {
             e.stopPropagation();
