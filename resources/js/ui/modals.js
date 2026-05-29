@@ -257,6 +257,7 @@ export function bindModals(handlers) {
         const inRoute = editDestFormState.inRoute;
         const dayId = document.getElementById('edit-dest-day').value || null;
         const isReserved = document.getElementById('edit-dest-reserved')?.checked ?? false;
+        const siteUrl = document.getElementById('edit-dest-site-url')?.value?.trim() ?? '';
         const placeFlags = readPlaceTypeFlags('edit');
         const price = parsePriceInput(document.getElementById('edit-dest-price')?.value);
 
@@ -266,6 +267,7 @@ export function bindModals(handlers) {
                 ...d,
                 name,
                 description: document.getElementById('edit-dest-description').value || d.description,
+                siteUrl,
                 photoUrl: document.getElementById('edit-dest-photo').value || d.photoUrl,
                 duration: document.getElementById('edit-dest-duration').value || d.duration,
                 isRoundTrip: editDestFormState.isRoundTrip,
@@ -343,6 +345,8 @@ export function openEditDestModal(destId) {
     setUi({ editDestModal: { isOpen: true, destId } });
     document.getElementById('edit-dest-name').value = dest.name;
     document.getElementById('edit-dest-description').value = dest.description ?? '';
+    const siteUrl = document.getElementById('edit-dest-site-url');
+    if (siteUrl) siteUrl.value = dest.siteUrl ?? '';
     document.getElementById('edit-dest-lat').value = dest.lat;
     document.getElementById('edit-dest-lng').value = dest.lng;
     document.getElementById('edit-dest-duration').value = dest.duration ?? '';

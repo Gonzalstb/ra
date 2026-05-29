@@ -96,6 +96,10 @@
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Descripción</label>
                 <textarea id="edit-dest-description" rows="2" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none resize-none"></textarea>
             </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">URL del sitio <span class="text-slate-600 font-normal normal-case">(opcional)</span></label>
+                <input type="text" id="edit-dest-site-url" placeholder="https://..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none min-h-[44px]" />
+            </div>
             <div id="edit-dest-route-fields" class="grid grid-cols-2 gap-2">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tiempo</label>

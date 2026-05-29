@@ -167,6 +167,8 @@ class TripSyncService
                 $description = preg_replace('/^\[bar\]\s*/', '', $description) ?? $description;
             }
 
+            $siteUrl = trim((string) ($dest['siteUrl'] ?? ''));
+
             $payload = [
                 'trip_id' => $trip->id,
                 'day_id' => $dayId,
@@ -175,6 +177,7 @@ class TripSyncService
                 'photo_url' => ! empty($dest['photoUrl'])
                     ? $dest['photoUrl']
                     : 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=100&auto=format&fit=crop&q=80',
+                'site_url' => $siteUrl !== '' ? $siteUrl : null,
                 'duration' => $dest['duration'] ?? '1h',
                 'is_round_trip' => $dest['isRoundTrip'] ?? false,
                 'in_route' => $isTextOnly ? false : ($dest['inRoute'] ?? true),
@@ -199,6 +202,14 @@ class TripSyncService
 
             if (Schema::hasColumn('destinations', 'is_bar')) {
                 $payload['is_bar'] = $isBar;
+            }
+
+            if (Schema::hasColumn('destinations', 'is_favorite')) {
+                $payload['is_favorite'] = $dest['isFavorite'] ?? false;
+            }
+
+            if (! Schema::hasColumn('destinations', 'site_url')) {
+                unset($payload['site_url']);
             }
 
             Destination::updateOrCreate(['id' => $dest['id']], $payload);

@@ -216,7 +216,9 @@ export function appendDestination(dest, options = {}) {
 
     const newDest = {
         isReserved: false,
+        isFavorite: false,
         price: null,
+        siteUrl: '',
         ...dest,
     };
 

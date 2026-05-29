@@ -44,11 +44,13 @@ export function normalizeTrip(trip) {
                 description: flags.description,
                 dayId: d.dayId ?? null,
                 isReserved: !!d.isReserved,
+                isFavorite: !!d.isFavorite,
                 isWinery: flags.isWinery,
                 isHotel: flags.isHotel,
                 isBar: flags.isBar,
                 isTextOnly: flags.isTextOnly,
                 price: d.price != null ? d.price : null,
+                siteUrl: d.siteUrl ?? '',
                 lat: flags.isTextOnly ? null : d.lat,
                 lng: flags.isTextOnly ? null : d.lng,
             };

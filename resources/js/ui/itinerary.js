@@ -105,6 +105,7 @@ function renderPlanPriceBlock(d) {
 
 function renderPlanStopCard(d, trip, routeIndex) {
     const reserved = !!d.isReserved;
+    const favorite = !!d.isFavorite;
     const cardBorder = reserved
         ? 'border-emerald-500/40 bg-emerald-950/25'
         : 'border-slate-800 bg-slate-950/80';
@@ -123,6 +124,14 @@ function renderPlanStopCard(d, trip, routeIndex) {
     const segBadge = segNums.length
         ? `<span class="text-[8px] font-bold text-emerald-400/90 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded">Tramo ${segNums.join(', ')}</span>`
         : '';
+    const favoriteBtn = `<button type="button" data-toggle-favorite="${d.id}" class="text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded border transition ${
+        favorite
+            ? 'text-amber-300 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20'
+            : 'text-slate-500 bg-slate-900/40 border-slate-700 hover:text-amber-300 hover:border-amber-500/30'
+    }" title="${favorite ? 'Quitar de favoritos' : 'Marcar como favorito'}">★</button>`;
+    const siteBtn = d.siteUrl
+        ? `<button type="button" data-open-site="${d.id}" class="text-[8px] font-black uppercase tracking-wide text-sky-300 bg-sky-500/10 border border-sky-500/25 px-1.5 py-0.5 rounded hover:bg-sky-500/20 transition" title="Abrir web">🌐</button>`
+        : '';
 
     return `
     <div class="plan-stop-card rounded-xl border ${cardBorder} p-2.5 space-y-2" data-plan-stop="${d.id}">
@@ -137,6 +146,8 @@ function renderPlanStopCard(d, trip, routeIndex) {
                 <div class="flex flex-wrap items-center gap-1">
                     <p class="text-[11px] font-bold text-white truncate max-w-full">${escapeHtml(d.name)}</p>
                     ${reserved ? '<span class="text-[8px] font-black uppercase tracking-wide text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded">Reservado</span>' : ''}
+                    ${favoriteBtn}
+                    ${siteBtn}
                     ${placeBadge}
                     ${segBadge}
                 </div>
@@ -431,6 +442,35 @@ export function bindItinerary(onMapRedraw) {
     });
 
     document.getElementById('itinerary-days-list')?.addEventListener('click', (e) => {
+        const favBtn = e.target.closest('[data-toggle-favorite]');
+        if (favBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const destId = favBtn.dataset.toggleFavorite;
+            const dest = getActiveTrip()?.destinations.find((d) => d.id === destId);
+            if (!dest) return;
+            const next = !dest.isFavorite;
+            updateDestinationFields(destId, { isFavorite: next });
+            renderItinerary();
+            renderSidebar();
+            onMapRedraw?.();
+            showAlert(next ? `★ «${dest.name}» añadido a favoritos.` : `«${dest.name}» quitado de favoritos.`, next ? 'success' : 'info');
+            return;
+        }
+
+        const siteBtn = e.target.closest('[data-open-site]');
+        if (siteBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const destId = siteBtn.dataset.openSite;
+            const dest = getActiveTrip()?.destinations.find((d) => d.id === destId);
+            const raw = dest?.siteUrl?.trim();
+            if (!raw) return;
+            const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+            window.open(url, '_blank', 'noopener,noreferrer');
+            return;
+        }
+
         const addTextStopBtn = e.target.closest('[data-add-day-text-stop]');
         if (addTextStopBtn) {
             e.preventDefault();

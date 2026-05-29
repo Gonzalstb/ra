@@ -66,12 +66,14 @@ class TripFormatter
             'name' => $destination->name,
             'description' => $destination->description ?? '',
             'photoUrl' => $destination->photo_url,
+            'siteUrl' => $destination->site_url,
             'duration' => $destination->duration,
             'isRoundTrip' => $destination->is_round_trip,
             'inRoute' => $destination->in_route,
             'isTextOnly' => (bool) ($destination->is_text_only ?? false)
                 || str_starts_with($destination->description ?? '', '[sin-mapa]'),
             'isReserved' => $destination->is_reserved,
+            'isFavorite' => (bool) ($destination->is_favorite ?? false),
             'isWinery' => (bool) ($destination->is_winery ?? false)
                 || str_starts_with($destination->description ?? '', '[bodega]'),
             'isHotel' => (bool) ($destination->is_hotel ?? false)

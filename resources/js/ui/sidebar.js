@@ -1,6 +1,7 @@
 import {
     getState, getActiveTrip, setState, setStateFromServer, updateActiveTrip,
     reorderRouteDestination, setDestinationRouteStatus, splitDestinations,
+    updateDestinationFields,
 } from '../state/plannerStore';
 import { showAlert } from './alerts';
 import { setActiveTab } from './tabs';
@@ -75,6 +76,15 @@ function renderDestCard(dest, index, type, trip, routeDestinations = [], routeCo
     const isRoute = type === 'route';
     const textOnly = isTextOnlyDestination(dest);
     const placeBadge = destinationPlaceBadgeHtml(dest);
+    const favorite = !!dest.isFavorite;
+    const favoriteBtn = `<button type="button" data-toggle-favorite="${dest.id}" class="text-[9px] font-bold px-1.5 py-0.5 rounded border transition ${
+        favorite
+            ? 'text-amber-300 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20'
+            : 'text-slate-500 bg-slate-950/40 border-slate-700 hover:text-amber-300 hover:border-amber-500/30'
+    }" title="${favorite ? 'Quitar de favoritos' : 'Marcar como favorito'}">★</button>`;
+    const siteBtn = dest.siteUrl
+        ? `<button type="button" data-open-site="${dest.id}" class="text-[9px] font-bold text-sky-300 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded hover:bg-sky-500/20 transition" title="Abrir web">🌐</button>`
+        : '';
     const dayTitle = dest.dayId ? (trip.days ?? []).find((d) => d.id === dest.dayId)?.title : null;
     const segNums = isRoute ? getDestSegmentNumbers(trip, dest.id) : [];
     const segBadge = segNums.length
@@ -107,6 +117,8 @@ function renderDestCard(dest, index, type, trip, routeDestinations = [], routeCo
             ${dayTitle ? `<span class="text-[9px] font-bold text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20 max-w-full truncate">${escapeHtml(dayTitle)}</span>` : ''}
             ${segBadge}
             ${dest.isReserved ? '<span class="text-[9px] font-bold text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30">Reservado</span>' : ''}
+            ${favoriteBtn}
+            ${siteBtn}
             ${placeBadge}
             </div>
             <p class="text-[11px] text-slate-400 line-clamp-2 mt-0.5 leading-snug">${escapeHtml(dest.description)}</p>
@@ -187,6 +199,32 @@ export function bindSidebarListEvents(onMapRedraw) {
     });
 
     document.getElementById('sidebar-content')?.addEventListener('click', (e) => {
+        const favBtn = e.target.closest('[data-toggle-favorite]');
+        if (favBtn) {
+            e.stopPropagation();
+            const destId = favBtn.dataset.toggleFavorite;
+            const dest = getActiveTrip()?.destinations.find((d) => d.id === destId);
+            if (!dest) return;
+            const next = !dest.isFavorite;
+            updateDestinationFields(destId, { isFavorite: next });
+            renderSidebar();
+            onMapRedraw?.();
+            showAlert(next ? `★ «${dest.name}» añadido a favoritos.` : `«${dest.name}» quitado de favoritos.`, next ? 'success' : 'info');
+            return;
+        }
+
+        const siteBtn = e.target.closest('[data-open-site]');
+        if (siteBtn) {
+            e.stopPropagation();
+            const destId = siteBtn.dataset.openSite;
+            const dest = getActiveTrip()?.destinations.find((d) => d.id === destId);
+            const raw = dest?.siteUrl?.trim();
+            if (!raw) return;
+            const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+            window.open(url, '_blank', 'noopener,noreferrer');
+            return;
+        }
+
         const mapsBtn = e.target.closest('[data-open-maps]');
         if (mapsBtn) {
             e.stopPropagation();

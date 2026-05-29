@@ -81,6 +81,7 @@ export function bindForms(onMapRedraw) {
         const name = document.getElementById('form-name').value.trim();
         const lat = document.getElementById('form-lat').value;
         const lng = document.getElementById('form-lng').value;
+        const siteUrl = document.getElementById('form-site-url')?.value ?? '';
         const { form } = getState().ui;
 
         if (!name) {
@@ -112,6 +113,7 @@ export function bindForms(onMapRedraw) {
             const price = parsePriceInput(document.getElementById('form-price')?.value);
             const patch = { ...placeFlags };
             if (price != null) patch.price = price;
+            if (siteUrl && siteUrl.trim()) patch.siteUrl = siteUrl.trim();
             if (Object.keys(patch).length) {
                 updateActiveTrip({
                     destinations: getActiveTrip().destinations.map((d) =>
@@ -139,6 +141,7 @@ export function bindForms(onMapRedraw) {
             name,
             description: document.getElementById('form-description').value || 'Punto de exploración guardado en el mapa del viaje.',
             photoUrl: (form.inRoute ? document.getElementById('form-photo') : document.getElementById('form-photo-alt'))?.value || document.getElementById('form-photo')?.value || DEFAULT_PHOTO_URL,
+            siteUrl: siteUrl.trim(),
             duration: document.getElementById('form-duration').value || '1h',
             isRoundTrip: form.isRoundTrip,
             inRoute: form.inRoute,
@@ -202,6 +205,8 @@ export function bindForms(onMapRedraw) {
 function resetAddForm() {
     document.getElementById('form-name').value = '';
     document.getElementById('form-description').value = '';
+    const siteUrl = document.getElementById('form-site-url');
+    if (siteUrl) siteUrl.value = '';
     document.getElementById('form-photo').value = '';
     document.getElementById('form-duration').value = '';
     const priceEl = document.getElementById('form-price');
