@@ -10,6 +10,7 @@ import {
     coordsNearlyEqual,
 } from '../services/routing';
 import { mapsLinkHtml } from '../services/mapsLinks';
+import { showAlert } from '../ui/alerts';
 import {
     destinationMapBadgeColor, destinationMapBadgeIcon, destinationPlaceBadgeHtml,
     isPlaceEmojiBadge,
@@ -288,6 +289,51 @@ function bindSegmentLongPress(line, segId) {
     line.on('touchend', clearPress);
 }
 
+function bindDestinationLongPress(marker, destId) {
+    let pressTimer = null;
+    let started = false;
+
+    const clearPress = () => {
+        if (pressTimer) clearTimeout(pressTimer);
+        pressTimer = null;
+        started = false;
+    };
+
+    const toggleFavorite = () => {
+        const trip = getActiveTrip();
+        if (!trip) return;
+        const target = trip.destinations.find((d) => d.id === destId);
+        if (!target) return;
+        const nextFavorite = !target.isFavorite;
+        updateActiveTrip({
+            destinations: trip.destinations.map((d) => (d.id === destId ? { ...d, isFavorite: nextFavorite } : d)),
+        });
+        showAlert(
+            nextFavorite
+                ? `★ «${target.name}» añadido a favoritos.`
+                : `«${target.name}» quitado de favoritos.`,
+            nextFavorite ? 'success' : 'info'
+        );
+    };
+
+    const startPress = () => {
+        clearPress();
+        started = true;
+        pressTimer = setTimeout(() => {
+            if (!started) return;
+            toggleFavorite();
+        }, 650);
+    };
+
+    marker.on('mousedown', startPress);
+    marker.on('touchstart', startPress);
+    marker.on('mouseup', clearPress);
+    marker.on('mouseout', clearPress);
+    marker.on('touchend', clearPress);
+    marker.on('touchcancel', clearPress);
+    marker.on('dragstart', clearPress);
+}
+
 export async function applyOsrmDurationsToTrip() {
     const trip = getActiveTrip();
     if (!trip) return false;
@@ -378,6 +424,9 @@ export async function drawMapElements() {
         const badgeColor = destinationMapBadgeColor(dest);
         const badgeIcon = destinationMapBadgeIcon(dest, routeIndex);
         const badgeEmojiClass = isPlaceEmojiBadge(badgeIcon) ? 'text-[10px] leading-none' : 'text-[9px]';
+        const favoriteBadge = dest.isFavorite
+            ? '<div class="absolute -top-1 -left-1 w-5 h-5 bg-amber-500 text-white border-2 border-white text-[9px] rounded-full flex items-center justify-center font-bold shadow-md">★</div>'
+            : '';
         const placeBadge = destinationPlaceBadgeHtml(dest);
 
         const destIcon = L.divIcon({
@@ -387,6 +436,7 @@ export async function drawMapElements() {
             <div class="w-10 h-10 border-2 ${borderClass} rounded-full overflow-hidden shadow-lg transition-transform hover:scale-110 duration-200 bg-slate-800">
               <img src="${dest.photoUrl}" class="w-full h-full object-cover" alt="" />
             </div>
+            ${favoriteBadge}
             <div class="absolute -top-1 -right-1 w-5 h-5 ${badgeColor} text-white border-2 border-white ${badgeEmojiClass} rounded-full flex items-center justify-center font-bold shadow-md">
               ${badgeIcon}
             </div>
@@ -409,8 +459,10 @@ export async function drawMapElements() {
           <div class="p-3">
             <h3 class="font-bold text-white text-base m-0 truncate">${dest.name}</h3>
             ${isReserved ? '<span class="inline-block mt-1.5 text-[10px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-600/50 px-2 py-0.5 rounded">✓ Reservado</span>' : ''}
+            ${dest.isFavorite ? '<span class="inline-block mt-1.5 ml-1 text-[10px] font-bold text-amber-300 bg-amber-950 border border-amber-500/50 px-2 py-0.5 rounded">★ Favorito</span>' : ''}
             ${placeBadge ? `<span class="inline-block mt-1.5 ml-1">${placeBadge}</span>` : ''}
             <p class="text-xs text-slate-300 my-2 leading-relaxed">${dest.description}</p>
+            <p class="text-[10px] text-slate-400 -mt-1">Mantén pulsada la chincheta para marcar/quitar favorito.</p>
             ${dest.inRoute ? `
               <div class="text-xs text-amber-400 font-extrabold bg-slate-900/80 p-2 rounded border border-slate-800 mt-2">
                 🚗 ${dest.duration} <span class="text-slate-500 font-normal">· en coche</span>
@@ -424,6 +476,7 @@ export async function drawMapElements() {
         const marker = L.marker([dest.lat, dest.lng], { icon: destIcon })
             .addTo(mapInstance)
             .bindPopup(popupContent, { maxWidth: 280, padding: 0 });
+        bindDestinationLongPress(marker, dest.id);
 
         layers.markers.push(marker);
     });

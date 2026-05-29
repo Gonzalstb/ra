@@ -57,6 +57,7 @@ function buildMapFingerprint(trip) {
             lng: d.lng,
             inRoute: d.inRoute,
             isReserved: d.isReserved,
+            isFavorite: d.isFavorite,
             isWinery: d.isWinery,
             isHotel: d.isHotel,
             isBar: d.isBar,
