@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('destinations', function (Blueprint $table) {
             $table->boolean('is_favorite')->default(false)->after('is_reserved');
-            $table->string('site_url')->nullable()->after('photo_url');
+            $table->text('site_url')->nullable()->after('photo_url');
         });
     }
 

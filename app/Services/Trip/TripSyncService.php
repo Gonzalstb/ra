@@ -44,18 +44,29 @@ class TripSyncService
                     'starting_point_lat' => $tripData['startingPoint']['lat'],
                     'starting_point_lng' => $tripData['startingPoint']['lng'],
                     'is_active' => $tripData['id'] === $payload['activeTripId'],
-                    'return_to_start' => $tripData['returnToStart'] ?? true,
-                    'ending_point_name' => ($tripData['returnToStart'] ?? true) || empty($tripData['endingPoint'])
-                        ? null
-                        : ($tripData['endingPoint']['name'] ?? null),
-                    'ending_point_lat' => ($tripData['returnToStart'] ?? true) || empty($tripData['endingPoint'])
-                        ? null
-                        : ($tripData['endingPoint']['lat'] ?? null),
-                    'ending_point_lng' => ($tripData['returnToStart'] ?? true) || empty($tripData['endingPoint'])
-                        ? null
-                        : ($tripData['endingPoint']['lng'] ?? null),
-                    'route_segments' => $tripData['routeSegments'] ?? [],
                 ];
+
+                if (Schema::hasColumn('trips', 'return_to_start')) {
+                    $attributes['return_to_start'] = $tripData['returnToStart'] ?? true;
+                }
+                if (Schema::hasColumn('trips', 'ending_point_name')) {
+                    $attributes['ending_point_name'] = ($tripData['returnToStart'] ?? true) || empty($tripData['endingPoint'])
+                        ? null
+                        : ($tripData['endingPoint']['name'] ?? null);
+                }
+                if (Schema::hasColumn('trips', 'ending_point_lat')) {
+                    $attributes['ending_point_lat'] = ($tripData['returnToStart'] ?? true) || empty($tripData['endingPoint'])
+                        ? null
+                        : ($tripData['endingPoint']['lat'] ?? null);
+                }
+                if (Schema::hasColumn('trips', 'ending_point_lng')) {
+                    $attributes['ending_point_lng'] = ($tripData['returnToStart'] ?? true) || empty($tripData['endingPoint'])
+                        ? null
+                        : ($tripData['endingPoint']['lng'] ?? null);
+                }
+                if (Schema::hasColumn('trips', 'route_segments')) {
+                    $attributes['route_segments'] = $tripData['routeSegments'] ?? [];
+                }
 
                 if ($existingTrip) {
                     $beforeDestinations = $existingTrip->destinations()
@@ -102,18 +113,22 @@ class TripSyncService
                 $day->delete();
             });
 
+        $hasDateEnd = Schema::hasColumn('itinerary_days', 'date_end');
+
         foreach ($days as $index => $dayData) {
-            ItineraryDay::updateOrCreate(
-                ['id' => $dayData['id']],
-                [
-                    'trip_id' => $trip->id,
-                    'title' => $dayData['title'],
-                    'date' => ! empty($dayData['date']) ? $dayData['date'] : null,
-                    'date_end' => ! empty($dayData['dateEnd']) ? $dayData['dateEnd'] : null,
-                    'notes' => $dayData['notes'] ?? '',
-                    'sort_order' => $index,
-                ]
-            );
+            $dayPayload = [
+                'trip_id' => $trip->id,
+                'title' => $dayData['title'],
+                'date' => ! empty($dayData['date']) ? $dayData['date'] : null,
+                'notes' => $dayData['notes'] ?? '',
+                'sort_order' => $index,
+            ];
+
+            if ($hasDateEnd) {
+                $dayPayload['date_end'] = ! empty($dayData['dateEnd']) ? $dayData['dateEnd'] : null;
+            }
+
+            ItineraryDay::updateOrCreate(['id' => $dayData['id']], $dayPayload);
         }
     }
 
@@ -177,16 +192,25 @@ class TripSyncService
                 'photo_url' => ! empty($dest['photoUrl'])
                     ? $dest['photoUrl']
                     : 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=100&auto=format&fit=crop&q=80',
-                'site_url' => $siteUrl !== '' ? $siteUrl : null,
                 'duration' => $dest['duration'] ?? '1h',
                 'is_round_trip' => $dest['isRoundTrip'] ?? false,
                 'in_route' => $isTextOnly ? false : ($dest['inRoute'] ?? true),
-                'is_reserved' => $dest['isReserved'] ?? false,
-                'price' => isset($dest['price']) && $dest['price'] !== '' ? $dest['price'] : null,
                 'lat' => $lat,
                 'lng' => $lng,
                 'sort_order' => $destIndex,
             ];
+
+            if (Schema::hasColumn('destinations', 'is_reserved')) {
+                $payload['is_reserved'] = $dest['isReserved'] ?? false;
+            }
+
+            if (Schema::hasColumn('destinations', 'price')) {
+                $payload['price'] = isset($dest['price']) && $dest['price'] !== '' ? $dest['price'] : null;
+            }
+
+            if (Schema::hasColumn('destinations', 'site_url')) {
+                $payload['site_url'] = $siteUrl !== '' ? $siteUrl : null;
+            }
 
             if ($hasTextOnlyColumn) {
                 $payload['is_text_only'] = $isTextOnly;
@@ -206,10 +230,6 @@ class TripSyncService
 
             if (Schema::hasColumn('destinations', 'is_favorite')) {
                 $payload['is_favorite'] = $dest['isFavorite'] ?? false;
-            }
-
-            if (! Schema::hasColumn('destinations', 'site_url')) {
-                unset($payload['site_url']);
             }
 
             Destination::updateOrCreate(['id' => $dest['id']], $payload);
@@ -335,6 +355,10 @@ class TripSyncService
 
     private function createActivityLog(Trip $trip, User $actor, string $action, array $payload): void
     {
+        if (! Schema::hasTable('trip_activity_logs')) {
+            return;
+        }
+
         TripActivityLog::query()->create([
             'trip_id' => $trip->id,
             'user_id' => $actor->id,

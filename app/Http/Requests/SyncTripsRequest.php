@@ -56,7 +56,7 @@ class SyncTripsRequest extends FormRequest
             'trips.*.destinations.*.isHotel' => 'boolean',
             'trips.*.destinations.*.isBar' => 'boolean',
             'trips.*.destinations.*.price' => 'nullable|numeric|min:0',
-            'trips.*.destinations.*.siteUrl' => 'nullable|string',
+            'trips.*.destinations.*.siteUrl' => 'nullable|string|max:2048',
             'trips.*.destinations.*.lat' => 'nullable|numeric',
             'trips.*.destinations.*.lng' => 'nullable|numeric',
         ];

@@ -9,8 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('destinations', function (Blueprint $table) {
-            $table->boolean('is_hotel')->default(false)->after('is_winery');
-            $table->boolean('is_bar')->default(false)->after('is_hotel');
+            if (! Schema::hasColumn('destinations', 'is_hotel')) {
+                $table->boolean('is_hotel')->default(false);
+            }
+            if (! Schema::hasColumn('destinations', 'is_bar')) {
+                $table->boolean('is_bar')->default(false);
+            }
         });
     }
 

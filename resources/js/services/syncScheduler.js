@@ -8,6 +8,7 @@ import {
 
 let syncTimer = null;
 let syncInFlight = false;
+let syncPending = false;
 
 /** Preserva en el estado local flags que el servidor aún no devuelve bien. */
 function mergeServerTripsPreservingLocalFields(serverTrips, localTrips, activeTripId) {
@@ -38,23 +39,21 @@ function mergeServerTripsPreservingLocalFields(serverTrips, localTrips, activeTr
         return next;
     });
 
-    const missingText = localDests.filter(
-        (d) => isTextOnlyDestination(d) && !serverIds.has(d.id)
-    );
+    const missingLocal = localDests.filter((d) => !serverIds.has(d.id));
 
     return serverTrips.map((t) => {
         if (t.id !== activeTripId) return t;
         return {
             ...t,
-            destinations: [...mergedDests, ...missingText],
+            destinations: [...mergedDests, ...missingLocal],
         };
     });
 }
 
-export function scheduleSync(force = false) {
+function runSync(force = false) {
     const { ui, trips, activeTripId } = getState();
 
-    if (!ui.dataLoaded || ui.skipSync || !trips.length || !activeTripId || syncInFlight) {
+    if (!ui.dataLoaded || ui.skipSync || !trips.length || !activeTripId) {
         return;
     }
 
@@ -90,8 +89,23 @@ export function scheduleSync(force = false) {
             showAlert('Error al guardar los cambios en el servidor.', 'error');
         } finally {
             syncInFlight = false;
+            if (syncPending) {
+                syncPending = false;
+                runSync(true);
+            } else if (tripsDataChanged()) {
+                runSync(true);
+            }
         }
-    }, 800);
+    }, force ? 0 : 800);
+}
+
+export function scheduleSync(force = false) {
+    if (syncInFlight) {
+        syncPending = true;
+        return;
+    }
+
+    runSync(force);
 }
 
 export function retrySync() {

@@ -121,6 +121,7 @@ export function bindForms(onMapRedraw) {
                     ),
                 });
             }
+            scheduleSync(true);
             resetAddForm();
             setActiveTab('itinerary');
             showAlert(`📝 «${newDest.name}» añadida al día (sin mapa).`, 'success');
@@ -159,6 +160,7 @@ export function bindForms(onMapRedraw) {
             && document.getElementById('form-create-segment')?.checked !== false;
 
         appendDestination(newDest, { dayId: assignDayId });
+        scheduleSync(true);
 
         if (createSegment && tripBefore) {
             const fromKey = defaultFromKey(tripBefore);
@@ -171,7 +173,6 @@ export function bindForms(onMapRedraw) {
             });
             updateActiveTrip({ routeSegments: segs });
             clearRouteLegCache();
-            scheduleSync();
         }
 
         resetAddForm();
