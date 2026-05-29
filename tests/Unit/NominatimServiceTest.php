@@ -8,46 +8,63 @@ use Tests\TestCase;
 
 class NominatimServiceTest extends TestCase
 {
-    public function test_search_finds_italian_address_with_localita_prefix(): void
+    public function test_resolves_rural_address_by_named_place_and_city(): void
     {
         Http::fake([
-            'nominatim.openstreetmap.org/*' => Http::sequence()
-                ->push([])
-                ->push([[
-                    'lat' => '43.123456',
-                    'lon' => '10.654321',
-                    'display_name' => "Strada Vicinale Sant'Uberto, Castagneto Carducci, Livorno, Toscana, 57020, Italia",
-                ]]),
+            'nominatim.openstreetmap.org/search*' => function ($request) {
+                $q = $request->data()['q'] ?? '';
+
+                if ($q === 'Localita Racciano 28 Montenidoli, San Gimignano, Italy'
+                    || $q === 'Racciano 28 Montenidoli, San Gimignano, Italy') {
+                    return Http::response([]);
+                }
+
+                if ($q === 'Montenidoli, San Gimignano, Italy') {
+                    return Http::response([[
+                        'lat' => '43.4665270',
+                        'lon' => '11.0157551',
+                        'display_name' => 'Montenidoli, Fugnano, San Gimignano, Siena, Toscana, 53037, Italia',
+                    ]]);
+                }
+
+                return Http::response([]);
+            },
         ]);
 
         $result = app(NominatimService::class)->search(
-            "Località Sant'Uberto 164 57022 Castagneto Carducci (LI) Italy"
+            'Localita Racciano 28 Montenidoli - San Gimignano - Italy'
         );
 
         $this->assertNotNull($result);
-        $this->assertSame(43.123456, $result['lat']);
-        $this->assertSame(10.654321, $result['lng']);
-        $this->assertSame('Sin prefijo Località', $result['matchedLabel']);
+        $this->assertEqualsWithDelta(43.466527, $result['lat'], 0.0001);
+        $this->assertEqualsWithDelta(11.015755, $result['lng'], 0.0001);
+        $this->assertSame('Montenidoli', $result['name']);
     }
 
-    public function test_search_uses_structured_lookup_when_free_text_fails(): void
+    public function test_resolves_google_maps_style_address(): void
     {
         Http::fake([
-            'nominatim.openstreetmap.org/*' => Http::sequence()
-                ->push([])
-                ->push([])
-                ->push([[
-                    'lat' => '43.123456',
-                    'lon' => '10.654321',
-                    'display_name' => "Strada Vicinale Sant'Uberto, Castagneto Carducci, Livorno, Toscana, 57020, Italia",
-                ]]),
+            'nominatim.openstreetmap.org/search*' => function ($request) {
+                $q = $request->data()['q'] ?? '';
+
+                if ($q === 'Montenidoli, 53037 San Gimignano, Italy') {
+                    return Http::response([[
+                        'lat' => '43.4665270',
+                        'lon' => '11.0157551',
+                        'display_name' => 'Montenidoli, Fugnano, San Gimignano, Siena, Toscana, 53037, Italia',
+                    ]]);
+                }
+
+                return Http::response([]);
+            },
         ]);
 
         $result = app(NominatimService::class)->search(
-            "Località Sant'Uberto 164 57022 Castagneto Carducci Italy"
+            "Localita' Montenidoli, San Gimignano, Si 53037, 53037 San Gimignano SI, Italia"
         );
 
         $this->assertNotNull($result);
-        $this->assertSame('Búsqueda estructurada', $result['matchedLabel']);
+        $this->assertEqualsWithDelta(43.466527, $result['lat'], 0.0001);
+        $this->assertSame('Lugar + código postal y ciudad', $result['matchedLabel']);
     }
 }
