@@ -1,7 +1,7 @@
 import { fetchTrips } from '../api/tripsApi';
 import {
     setState, setUi, subscribe, enableSync, tripsDataChanged,
-    setActiveDayId, getActiveTrip, splitDestinations,
+    setActiveDayId, getActiveTrip, splitDestinations, getState,
 } from '../state/plannerStore';
 import { normalizeTrip } from '../utils/tripNormalize';
 import { ensureRoutePlans } from '../services/routePlans';
@@ -15,6 +15,7 @@ import { bindItinerary, renderItinerary } from '../ui/itinerary';
 import { bindRouteDragDrop } from '../ui/routeDragDrop';
 import { bindTripReturn, handleMapPickEnd, isPickingEndOnMap } from '../ui/tripReturn';
 import { bindRoutePlan, renderMapRouteChip, updateMapRouteGuide } from '../ui/routePlan';
+import { bindMapControls, renderMapPointsVisibilityControl } from '../ui/mapControls';
 import { scheduleSync, retrySync } from '../services/syncScheduler';
 import { bindMobilePanel } from '../ui/mobilePanel';
 import {
@@ -76,6 +77,7 @@ function buildMapFingerprint(trip) {
             isTextOnly: d.isTextOnly,
         })),
         routeOrder: route.map((d) => d.id),
+        hideOffRouteMapPoints: getState().ui.hideOffRouteMapPoints,
     });
 }
 
@@ -149,6 +151,7 @@ export async function initPlanner() {
     bindRouteDragDrop(redraw);
     bindTripReturn(redraw);
     bindRoutePlan(redraw);
+    bindMapControls(redraw);
     setRouteMapHandlers({
         onSelectPoint: (pointKey) => handleMapRoutePointSelection(pointKey, redraw),
         onDeleteSegmentRequest: (segId) => requestDeleteRouteSegment(segId, redraw),
@@ -191,6 +194,7 @@ export async function initPlanner() {
         if (trip) {
             renderMapRouteChip(trip);
             updateMapRouteGuide(trip);
+            renderMapPointsVisibilityControl();
         }
 
         if (state.ui.activeTab !== lastRenderedTab) {

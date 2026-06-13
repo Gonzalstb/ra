@@ -29,6 +29,8 @@ const initialUi = {
     activeDayId: '',
     collapsedDayIds: [],
     mapPickMode: null,
+    /** Ocultar en el mapa las chinchetas de puntos libres (!inRoute). */
+    hideOffRouteMapPoints: false,
 };
 
 let pendingDeletedTripIds = [];
@@ -353,6 +355,14 @@ export function getActiveDayId(trip) {
 
 export function setActiveDayId(dayId) {
     setUi({ activeDayId: dayId });
+}
+
+export function isHideOffRouteMapPoints() {
+    return !!getState().ui.hideOffRouteMapPoints;
+}
+
+export function toggleHideOffRouteMapPoints() {
+    setUi({ hideOffRouteMapPoints: !getState().ui.hideOffRouteMapPoints });
 }
 
 export function toggleDayCollapsed(dayId) {

@@ -1,4 +1,4 @@
-import { getActiveTrip, splitDestinations, updateActiveTrip } from '../state/plannerStore';
+import { getActiveTrip, splitDestinations, updateActiveTrip, isHideOffRouteMapPoints } from '../state/plannerStore';
 import {
     fetchRouteLeg,
     formatDuration,
@@ -506,9 +506,11 @@ export async function drawMapElements() {
     const routeDestinations = destinations.filter((d) => d.inRoute && d.lat != null && d.lng != null && !d.isTextOnly);
     const mapDestinations = getMapDestinations(trip);
     const pickPending = routeMapHandlers.isRoutePickPending?.() ?? false;
+    const hideOffRoute = isHideOffRouteMapPoints() && !pickPending;
 
     destinations.forEach((dest) => {
         if (dest.isTextOnly || dest.lat == null || dest.lng == null) return;
+        if (hideOffRoute && !dest.inRoute) return;
 
         const routeIndex = routeDestinations.findIndex((d) => d.id === dest.id);
         const isReserved = !!dest.isReserved;
