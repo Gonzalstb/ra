@@ -21,6 +21,8 @@ import {
     clearRouteLegCache,
     resolveRoutePoint,
     estimateRouteSummary,
+    getSegmentDurationInfo,
+    prefetchRouteLegDurations,
 } from '../services/routing';
 import { showAlert } from './alerts';
 import { scheduleSync } from '../services/syncScheduler';
@@ -151,6 +153,39 @@ function buildSegmentColorControls(seg) {
             <span class="text-[9px] font-bold text-slate-500 uppercase">Color de la línea en mapa</span>
             ${buildSegmentColorSwatchesHtml(seg.id, seg)}
         </div>`;
+}
+
+function buildSegmentDurationHtml(trip, seg) {
+    if (!seg.fromKey || !seg.toKey || seg.fromKey === seg.toKey) {
+        return '';
+    }
+    if (!resolveRoutePoint(trip, seg.fromKey) || !resolveRoutePoint(trip, seg.toKey)) {
+        return '<p class="text-[10px] text-slate-500 italic">⏱ Elige Desde y Hasta para calcular el tiempo.</p>';
+    }
+
+    const info = getSegmentDurationInfo(trip, seg);
+    if (!info) {
+        return '<p class="text-[10px] text-slate-500 italic">⏱ Calculando tiempo en coche…</p>';
+    }
+
+    const distance = info.distanceKm ? `<span class="text-slate-500 font-normal"> · ${info.distanceKm} km</span>` : '';
+    const estimate = info.source === 'estimate'
+        ? '<span class="text-slate-500 font-normal"> (estimado)</span>'
+        : '';
+
+    return `<p class="text-[10px] font-bold text-sky-300/95">⏱ ${escapeHtml(info.label)} en coche${distance}${estimate}</p>`;
+}
+
+let segmentDurationPrefetchToken = 0;
+
+function scheduleSegmentDurationPrefetch(trip) {
+    if (!trip) return;
+    const token = ++segmentDurationPrefetchToken;
+    prefetchRouteLegDurations(trip).then((updated) => {
+        if (updated && token === segmentDurationPrefetchToken) {
+            renderRoutePlan();
+        }
+    });
 }
 
 export function defaultFromKey(trip) {
@@ -520,6 +555,7 @@ export function renderRoutePlan() {
                     </select>
                 </label>
             </div>
+            ${buildSegmentDurationHtml(trip, seg)}
             ${buildSegmentColorControls(seg)}
             ${canSameRoad ? `
             <label class="flex items-center gap-2 min-h-[40px] cursor-pointer">
@@ -530,6 +566,8 @@ export function renderRoutePlan() {
             <p class="text-[9px] text-slate-500 leading-snug">Camino más corto en coche solo en este trayecto.</p>
         </article>`;
     }).join('');
+
+    scheduleSegmentDurationPrefetch(trip);
 }
 
 function fitSegmentOnMap(trip, segId) {

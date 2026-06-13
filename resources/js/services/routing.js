@@ -225,6 +225,69 @@ export function clearRouteLegCache() {
     legCache.clear();
 }
 
+function cachedLegForDrawable(trip, drawable) {
+    if (drawable.sameRoadAs) {
+        const ref = resolveDrawableSegments(trip).find((s) => s.id === drawable.sameRoadAs);
+        if (!ref) return null;
+        return legCache.get(legKey(
+            { lat: ref.from.lat, lng: ref.from.lng },
+            { lat: ref.to.lat, lng: ref.to.lng },
+        ));
+    }
+    return legCache.get(legKey(
+        { lat: drawable.from.lat, lng: drawable.from.lng },
+        { lat: drawable.to.lat, lng: drawable.to.lng },
+    ));
+}
+
+/** Tiempo en coche de un tramo (caché OSRM o estimación de la parada). */
+export function getSegmentDurationInfo(trip, seg) {
+    const drawable = resolveDrawableSegments(trip).find((s) => s.id === seg.id);
+    if (!drawable) return null;
+
+    const leg = cachedLegForDrawable(trip, drawable);
+    if (leg?.durationMin != null) {
+        return {
+            label: leg.durationFormatted ?? formatDuration(leg.durationMin),
+            distanceKm: leg.distanceKm ?? null,
+            source: 'route',
+        };
+    }
+
+    const destId = parseDestPointKey(seg.toKey);
+    if (destId) {
+        const dest = trip.destinations?.find((d) => d.id === destId);
+        if (dest?.duration) {
+            return { label: dest.duration, distanceKm: null, source: 'estimate' };
+        }
+    }
+
+    return null;
+}
+
+/** Precarga tiempos OSRM de tramos que aún no están en caché. */
+export async function prefetchRouteLegDurations(trip) {
+    const segments = resolveDrawableSegments(trip);
+    const legBySegmentId = new Map();
+    let updated = false;
+
+    for (const seg of segments) {
+        if (seg.sameRoadAs) continue;
+
+        const from = { lat: seg.from.lat, lng: seg.from.lng };
+        const to = { lat: seg.to.lat, lng: seg.to.lng };
+        if (legCache.has(legKey(from, to))) continue;
+
+        const leg = await fetchRouteLeg(from, to);
+        if (leg) {
+            legBySegmentId.set(seg.id, leg);
+            updated = true;
+        }
+    }
+
+    return updated;
+}
+
 /** Resumen para chip del mapa (usa caché OSRM si existe). */
 export function estimateRouteSummary(trip) {
     const plan = getActiveRouteSegments(trip);
