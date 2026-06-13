@@ -127,6 +127,47 @@ export function addRoutePlan(trip) {
     };
 }
 
+function cloneRoutePlanSegments(segments) {
+    const list = Array.isArray(segments) ? segments : [];
+    if (!list.length) return [];
+
+    const idMap = new Map();
+    const ts = Date.now();
+    const cloned = list.map((seg, i) => {
+        const newId = `seg-${ts}-${i}`;
+        idMap.set(seg.id, newId);
+        return { ...seg, id: newId };
+    });
+
+    return cloned.map((seg) => {
+        if (!seg.sameRoadAs) return seg;
+        const mapped = idMap.get(seg.sameRoadAs);
+        return mapped ? { ...seg, sameRoadAs: mapped } : { ...seg, sameRoadAs: null };
+    });
+}
+
+export function duplicateRoutePlan(trip, sourcePlanId) {
+    const normalized = ensureRoutePlans(trip);
+    const source = normalized.routePlans.find((p) => p.id === sourcePlanId);
+    if (!source) return normalized;
+
+    const id = `rp-${Date.now()}`;
+    const segments = cloneRoutePlanSegments(source.segments);
+    const baseName = (source.name ?? 'Ruta').trim();
+    const newPlan = {
+        id,
+        name: `${baseName} (copia)`,
+        segments,
+    };
+
+    return {
+        ...normalized,
+        routePlans: [...normalized.routePlans, newPlan],
+        activeRoutePlanId: id,
+        routeSegments: segments,
+    };
+}
+
 export function removeRoutePlan(trip, planId) {
     const normalized = ensureRoutePlans(trip);
     if (normalized.routePlans.length <= 1) {

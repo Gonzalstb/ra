@@ -10,6 +10,7 @@ import {
     addRoutePlan,
     removeRoutePlan,
     renameRoutePlan,
+    duplicateRoutePlan,
     ensureRoutePlans,
 } from '../services/routePlans';
 import {
@@ -392,14 +393,23 @@ function renderRoutePlansBar(trip) {
                         : 'bg-slate-900 text-slate-400 border-slate-700 hover:border-emerald-500/30 hover:text-slate-200'}">
                     <span class="truncate" data-route-plan-label="${plan.id}">${escapeHtml(plan.name)}</span>
                     <span class="text-[9px] opacity-70 shrink-0">${segCount} tr.</span>
+                    <span type="button" data-duplicate-route-plan="${plan.id}" class="ml-0.5 text-sky-400/80 hover:text-sky-300 opacity-0 group-hover:opacity-100 transition" title="Duplicar ruta">⧉</span>
                     ${canDelete ? `<span type="button" data-delete-route-plan="${plan.id}" class="ml-0.5 text-rose-400/80 hover:text-rose-300 opacity-0 group-hover:opacity-100 transition" title="Eliminar ruta">✕</span>` : ''}
                 </button>`;
             }).join('')}
         </div>
-        <button type="button" id="btn-add-route-plan"
-            class="shrink-0 min-h-[36px] px-2.5 py-1 rounded-lg text-[10px] font-bold text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition">
-            + Ruta
-        </button>`;
+        <div class="flex items-center gap-1 shrink-0">
+            <button type="button" id="btn-add-route-plan"
+                class="min-h-[36px] px-2.5 py-1 rounded-lg text-[10px] font-bold text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition"
+                title="Crear ruta vacía">
+                + Nueva
+            </button>
+            <button type="button" id="btn-duplicate-active-route-plan"
+                class="min-h-[36px] px-2.5 py-1 rounded-lg text-[10px] font-bold text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 transition"
+                title="Duplicar la ruta activa con todos sus tramos">
+                ⧉ Duplicar
+            </button>
+        </div>`;
 }
 
 function renderRouteTimeline(trip) {
@@ -881,6 +891,29 @@ export function getDestSegmentNumbers(trip, destId) {
         .filter((n) => n != null);
 }
 
+function applyDuplicateRoutePlan(sourcePlanId, onMapRedraw) {
+    const trip = getActiveTrip();
+    if (!trip) return;
+    const normalized = ensureRoutePlans(trip);
+    const source = normalized.routePlans.find((p) => p.id === sourcePlanId);
+    if (!source) return;
+
+    pendingMapFromKey = null;
+    const next = duplicateRoutePlan(trip, sourcePlanId);
+    updateActiveTrip(next);
+    clearRouteLegCache();
+    renderRoutePlan();
+    onMapRedraw?.();
+    scheduleSync();
+
+    const newPlan = next.routePlans.find((p) => p.id === next.activeRoutePlanId);
+    const segCount = newPlan?.segments?.length ?? 0;
+    const msg = segCount > 0
+        ? `«${newPlan?.name ?? 'Copia'}» creada con ${segCount} tramo(s). Puedes editarla sin afectar la original.`
+        : `«${newPlan?.name ?? 'Copia'}» creada (la ruta origen no tenía tramos).`;
+    showAlert(msg, 'success');
+}
+
 function switchRoutePlan(planId, onMapRedraw) {
     const trip = getActiveTrip();
     if (!trip) return;
@@ -950,9 +983,25 @@ function bindRoutePlansBar(onMapRedraw) {
             return;
         }
 
+        const duplicateBtn = e.target.closest('[data-duplicate-route-plan]');
+        if (duplicateBtn) {
+            e.stopPropagation();
+            applyDuplicateRoutePlan(duplicateBtn.dataset.duplicateRoutePlan, onMapRedraw);
+            return;
+        }
+
         const selectBtn = e.target.closest('[data-select-route-plan]');
-        if (selectBtn && !e.target.closest('[data-delete-route-plan]')) {
+        if (selectBtn && !e.target.closest('[data-delete-route-plan]') && !e.target.closest('[data-duplicate-route-plan]')) {
             switchRoutePlan(selectBtn.dataset.selectRoutePlan, onMapRedraw);
+            return;
+        }
+
+        if (e.target.closest('#btn-duplicate-active-route-plan')) {
+            const trip = getActiveTrip();
+            if (!trip) return;
+            const activeId = ensureRoutePlans(trip).activeRoutePlanId ?? ensureRoutePlans(trip).routePlans[0]?.id;
+            if (!activeId) return;
+            applyDuplicateRoutePlan(activeId, onMapRedraw);
             return;
         }
 

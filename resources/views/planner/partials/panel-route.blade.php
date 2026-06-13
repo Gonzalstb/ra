@@ -60,7 +60,7 @@
     <div id="route-plans-wrap" class="space-y-2 p-3 rounded-xl bg-slate-950/60 border border-slate-800">
         <div class="flex items-center justify-between gap-2">
             <p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Rutas alternativas</p>
-            <p class="text-[9px] text-slate-600">Doble clic en el nombre para renombrar</p>
+            <p class="text-[9px] text-slate-600">Doble clic para renombrar · ⧉ duplicar · ✕ eliminar</p>
         </div>
         <div id="route-plans-bar" class="flex flex-wrap items-center gap-2"></div>
         <p id="route-overlap-hint" class="hidden text-[9px] text-violet-300/90 leading-snug bg-violet-950/40 border border-violet-500/25 rounded-lg px-2.5 py-2">
