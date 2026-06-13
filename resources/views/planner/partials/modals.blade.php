@@ -177,3 +177,18 @@
         </div>
     </div>
 </div>
+
+<div id="modal-rename-route-plan" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+    <div class="bg-slate-950 border border-slate-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4 text-left">
+        <h3 class="font-bold text-lg text-white">Renombrar ruta</h3>
+        <label class="block">
+            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nombre</span>
+            <input type="text" id="rename-route-plan-input" maxlength="80" placeholder="Ej. Ruta costera"
+                class="w-full mt-1.5 bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl px-3 py-2.5 text-sm text-white outline-none min-h-[44px]" />
+        </label>
+        <div class="flex gap-2.5 pt-1">
+            <button type="button" data-close-rename-route-plan class="flex-1 bg-slate-900 text-slate-300 font-bold py-2.5 rounded-xl text-xs h-11">Cancelar</button>
+            <button type="button" id="btn-confirm-rename-route-plan" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs h-11">Guardar</button>
+        </div>
+    </div>
+</div>

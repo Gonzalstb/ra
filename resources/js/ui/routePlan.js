@@ -56,6 +56,7 @@ function updateRouteOverlapHint(trip) {
     el.classList.toggle('hidden', !show);
 }
 let pendingDeleteRoutePlan = null;
+let pendingRenameRoutePlan = null;
 let pendingMapFromKey = null;
 
 function escapeHtml(text) {
@@ -393,8 +394,9 @@ function renderRoutePlansBar(trip) {
                         : 'bg-slate-900 text-slate-400 border-slate-700 hover:border-emerald-500/30 hover:text-slate-200'}">
                     <span class="truncate" data-route-plan-label="${plan.id}">${escapeHtml(plan.name)}</span>
                     <span class="text-[9px] opacity-70 shrink-0">${segCount} tr.</span>
-                    <span type="button" data-duplicate-route-plan="${plan.id}" class="ml-0.5 text-sky-400/80 hover:text-sky-300 opacity-0 group-hover:opacity-100 transition" title="Duplicar ruta">⧉</span>
-                    ${canDelete ? `<span type="button" data-delete-route-plan="${plan.id}" class="ml-0.5 text-rose-400/80 hover:text-rose-300 opacity-0 group-hover:opacity-100 transition" title="Eliminar ruta">✕</span>` : ''}
+                    <span type="button" data-rename-route-plan="${plan.id}" class="ml-0.5 text-amber-400/80 hover:text-amber-300 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition" title="Renombrar ruta">✎</span>
+                    <span type="button" data-duplicate-route-plan="${plan.id}" class="ml-0.5 text-sky-400/80 hover:text-sky-300 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition" title="Duplicar ruta">⧉</span>
+                    ${canDelete ? `<span type="button" data-delete-route-plan="${plan.id}" class="ml-0.5 text-rose-400/80 hover:text-rose-300 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition" title="Eliminar ruta">✕</span>` : ''}
                 </button>`;
             }).join('')}
         </div>
@@ -657,6 +659,7 @@ function buildChainSegments(trip) {
 export function bindRoutePlan(onMapRedraw) {
     bindRoutePlansBar(onMapRedraw);
     bindDeleteRoutePlanModal(onMapRedraw);
+    bindRenameRoutePlanModal();
 
     document.getElementById('btn-edit-origin-route')?.addEventListener('click', openEditStartModal);
     document.getElementById('btn-focus-origin-route')?.addEventListener('click', () => {
@@ -966,6 +969,73 @@ function bindDeleteRoutePlanModal(onMapRedraw) {
     });
 }
 
+function openRenameRoutePlanModal(planId, planName) {
+    pendingRenameRoutePlan = { planId, planName };
+    const input = document.getElementById('rename-route-plan-input');
+    const modal = document.getElementById('modal-rename-route-plan');
+    if (input) {
+        input.value = planName;
+    }
+    modal?.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        input?.focus();
+        input?.select();
+    });
+}
+
+function closeRenameRoutePlanModal() {
+    pendingRenameRoutePlan = null;
+    document.getElementById('modal-rename-route-plan')?.classList.add('hidden');
+}
+
+function confirmRenameRoutePlan() {
+    if (!pendingRenameRoutePlan) return;
+    const trip = getActiveTrip();
+    if (!trip) return;
+
+    const input = document.getElementById('rename-route-plan-input');
+    const nextName = (input?.value ?? '').trim();
+    if (!nextName) {
+        showAlert('Escribe un nombre para la ruta.', 'info');
+        input?.focus();
+        return;
+    }
+
+    const { planId, planName } = pendingRenameRoutePlan;
+    closeRenameRoutePlanModal();
+
+    if (nextName === planName) return;
+
+    updateActiveTrip(renameRoutePlan(trip, planId, nextName));
+    renderRoutePlan();
+    scheduleSync();
+    showAlert(`Ruta renombrada a «${nextName}».`, 'success');
+}
+
+function bindRenameRoutePlanModal() {
+    const modal = document.getElementById('modal-rename-route-plan');
+    if (!modal || modal.dataset.bound === '1') return;
+    modal.dataset.bound = '1';
+
+    document.querySelectorAll('[data-close-rename-route-plan]').forEach((el) => {
+        el.addEventListener('click', () => closeRenameRoutePlanModal());
+    });
+
+    document.getElementById('btn-confirm-rename-route-plan')?.addEventListener('click', () => {
+        confirmRenameRoutePlan();
+    });
+
+    document.getElementById('rename-route-plan-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            confirmRenameRoutePlan();
+        }
+        if (e.key === 'Escape') {
+            closeRenameRoutePlanModal();
+        }
+    });
+}
+
 function bindRoutePlansBar(onMapRedraw) {
     const wrap = document.getElementById('route-plans-wrap');
     if (!wrap || wrap.dataset.bound === '1') return;
@@ -990,8 +1060,20 @@ function bindRoutePlansBar(onMapRedraw) {
             return;
         }
 
+        const renameBtn = e.target.closest('[data-rename-route-plan]');
+        if (renameBtn) {
+            e.stopPropagation();
+            const trip = getActiveTrip();
+            if (!trip) return;
+            const planId = renameBtn.dataset.renameRoutePlan;
+            const plan = ensureRoutePlans(trip).routePlans.find((p) => p.id === planId);
+            if (!plan) return;
+            openRenameRoutePlanModal(planId, plan.name);
+            return;
+        }
+
         const selectBtn = e.target.closest('[data-select-route-plan]');
-        if (selectBtn && !e.target.closest('[data-delete-route-plan]') && !e.target.closest('[data-duplicate-route-plan]')) {
+        if (selectBtn && !e.target.closest('[data-delete-route-plan]') && !e.target.closest('[data-duplicate-route-plan]') && !e.target.closest('[data-rename-route-plan]')) {
             switchRoutePlan(selectBtn.dataset.selectRoutePlan, onMapRedraw);
             return;
         }
@@ -1023,15 +1105,13 @@ function bindRoutePlansBar(onMapRedraw) {
     wrap.addEventListener('dblclick', (e) => {
         const label = e.target.closest('[data-route-plan-label]');
         if (!label) return;
+        e.preventDefault();
+        e.stopPropagation();
         const planId = label.dataset.routePlanLabel;
         const trip = getActiveTrip();
         if (!trip) return;
         const plan = ensureRoutePlans(trip).routePlans.find((p) => p.id === planId);
         if (!plan) return;
-        const nextName = window.prompt('Nombre de la ruta:', plan.name);
-        if (nextName == null) return;
-        updateActiveTrip(renameRoutePlan(trip, planId, nextName));
-        renderRoutePlan();
-        scheduleSync();
+        openRenameRoutePlanModal(planId, plan.name);
     });
 }
