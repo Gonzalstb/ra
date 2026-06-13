@@ -29,7 +29,7 @@ const initialUi = {
     activeDayId: '',
     collapsedDayIds: [],
     mapPickMode: null,
-    /** Ocultar en el mapa las chinchetas de puntos libres (!inRoute). */
+    /** Ocultar en el mapa puntos libres (no en ruta ni referenciados en tramos). */
     hideOffRouteMapPoints: false,
 };
 

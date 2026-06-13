@@ -114,7 +114,33 @@ export function resolveRoutePoint(trip, pointKey) {
     return null;
 }
 
-import { getActiveRouteSegments } from './routePlans';
+import { getActiveRouteSegments, ensureRoutePlans } from './routePlans';
+
+/** IDs de paradas referenciadas en tramos (todas las rutas alternativas). */
+export function getRouteReferencedDestIds(trip) {
+    const ids = new Set();
+    ensureRoutePlans(trip).routePlans.forEach((plan) => {
+        (plan.segments ?? []).forEach((seg) => {
+            const fromId = parseDestPointKey(seg.fromKey);
+            const toId = parseDestPointKey(seg.toKey);
+            if (fromId) ids.add(String(fromId));
+            if (toId) ids.add(String(toId));
+        });
+    });
+    return ids;
+}
+
+/** Parada que debe seguir visible en modo «solo ruta». */
+export function isDestinationOnMapRoute(trip, dest) {
+    if (!dest || dest.isTextOnly || dest.lat == null || dest.lng == null) return false;
+    if (dest.inRoute) return true;
+    return getRouteReferencedDestIds(trip).has(String(dest.id));
+}
+
+export function isOffRouteMapPoint(trip, dest) {
+    if (!dest || dest.isTextOnly || dest.lat == null || dest.lng == null) return false;
+    return !isDestinationOnMapRoute(trip, dest);
+}
 
 /** Convierte los tramos definidos por el usuario en geometría dibujable. */
 export function resolveDrawableSegments(trip, segmentsOverride = null) {

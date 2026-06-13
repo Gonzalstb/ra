@@ -10,6 +10,10 @@ import {
     getTripEndPoint,
     coordsNearlyEqual,
     getMapDestinations,
+    isOffRouteMapPoint,
+    ROUTE_POINT_END,
+    ROUTE_POINT_START,
+    destPointKey,
 } from '../services/routing';
 import { ensureRoutePlans, getActiveRouteSegments } from '../services/routePlans';
 import { getOverlappingSegmentInfo, segmentRouteKey, tripHasRouteOverlaps } from '../services/routeOverlap';
@@ -22,7 +26,6 @@ import {
     destinationPriceBadgeHtml, isPlaceEmojiBadge, canTogglePriceOnStop,
     toggleDestinationPriceBadge,
 } from '../utils/destinationHelpers';
-import { ROUTE_POINT_END, ROUTE_POINT_START, destPointKey } from '../services/routing';
 
 let mapInstance = null;
 const layers = { markers: [], polylines: [], labels: [] };
@@ -641,7 +644,7 @@ export async function drawMapElements() {
 
     destinations.forEach((dest) => {
         if (dest.isTextOnly || dest.lat == null || dest.lng == null) return;
-        if (hideOffRoute && !dest.inRoute) return;
+        if (hideOffRoute && isOffRouteMapPoint(trip, dest)) return;
 
         const routeIndex = routeDestinations.findIndex((d) => d.id === dest.id);
         const isReserved = !!dest.isReserved;
