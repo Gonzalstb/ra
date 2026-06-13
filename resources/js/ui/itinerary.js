@@ -11,6 +11,7 @@ import { focusOnLocation, fitDestinationsBounds } from '../map/mapManager';
 import { openDirections } from '../services/mapsLinks';
 import { setActiveTab } from './tabs';
 import { parseDestPointKey } from '../services/routing';
+import { getActiveRouteSegments } from '../services/routePlans';
 import { getDestSegmentNumbers } from './routePlan';
 import { formatDayDateBadge, formatDayDateRangeLong } from '../utils/dayDates';
 import {
@@ -37,7 +38,7 @@ function getDayStopsInRouteOrder(trip, dayId) {
 
 /** Paradas que algún tramo define como llegada (toKey) y pertenecen al día. */
 function getStopsArrivingOnDay(trip, dayId) {
-    const segments = trip.routeSegments ?? [];
+    const segments = getActiveRouteSegments(trip);
     if (!segments.length) {
         return getDayStopsInRouteOrder(trip, dayId);
     }
@@ -49,13 +50,17 @@ function getStopsArrivingOnDay(trip, dayId) {
         const destId = parseDestPointKey(seg.toKey);
         if (!destId || seen.has(destId)) return;
         const dest = trip.destinations.find((d) => d.id === destId);
-        if (destinationBelongsToDay(dest, dayId)) {
+        if (!dest) return;
+        const onDay = (seg.dayId && sameDayId(seg.dayId, dayId))
+            || destinationBelongsToDay(dest, dayId);
+        if (onDay) {
             seen.add(destId);
             ordered.push(dest);
         }
     });
 
-    return ordered;
+    if (ordered.length) return ordered;
+    return getDayStopsInRouteOrder(trip, dayId);
 }
 
 /** Paradas del resumen del día: llegadas por tramo + notas de solo texto. */
@@ -186,12 +191,17 @@ function renderDayBudgetFooter(stops) {
 }
 
 function buildDayStopsHtml(trip, dayId) {
+    const ordered = getDayStopsForSummary(trip, dayId);
     const linked = trip.destinations.filter((d) => destinationBelongsToDay(d, dayId));
-    if (!linked.length) {
-        return '<p class="text-[10px] text-slate-500 italic py-2">Sin paradas. Añade una con el selector o crea una parada asignada al día activo.</p>';
+    if (!ordered.length && !linked.length) {
+        const hasRouteSegments = getActiveRouteSegments(trip).length > 0;
+        return hasRouteSegments
+            ? '<p class="text-[10px] text-slate-500 italic py-2">Asigna un día a los tramos de la ruta para ver las paradas aquí.</p>'
+            : '<p class="text-[10px] text-slate-500 italic py-2">Sin paradas. Añade una con el selector o crea una parada asignada al día activo.</p>';
     }
+    const displayStops = ordered.length ? ordered : linked;
     const orderedInRoute = getDayStopsInRouteOrder(trip, dayId);
-    return linked.map((d) => {
+    return displayStops.map((d) => {
         const routeIdx = orderedInRoute.findIndex((r) => r.id === d.id);
         return renderPlanStopCard(d, trip, routeIdx >= 0 ? routeIdx : 0);
     }).join('') + renderDayBudgetFooter(linked);
@@ -230,7 +240,7 @@ function renderDaySummary(trip) {
 
     if (stopsEl) {
         if (!ordered.length && !extra.length) {
-            const hasSegments = (trip.routeSegments ?? []).length > 0;
+            const hasSegments = getActiveRouteSegments(trip).length > 0;
             stopsEl.innerHTML = hasSegments
                 ? '<p class="text-[10px] text-slate-500 italic">Ningún tramo llega a una parada de este día.</p>'
                 : '<p class="text-[10px] text-slate-500 italic">Sin paradas en la ruta para este día.</p>';

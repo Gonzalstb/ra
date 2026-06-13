@@ -1,5 +1,6 @@
 import { normalizeDestinationsOrder } from '../state/plannerStore';
 import { syncTripRouteFields } from '../services/routePlans';
+import { syncRouteAndItinerary } from '../services/routeItinerarySync';
 
 const PLACE_PREFIXES = [
     { key: 'isWinery', prefix: '[bodega]' },
@@ -59,5 +60,5 @@ export function normalizeTrip(trip) {
         }),
     };
 
-    return syncTripRouteFields(base);
+    return syncRouteAndItinerary(syncTripRouteFields(base));
 }

@@ -22,6 +22,7 @@ import {
 } from '../services/routing';
 import { showAlert } from './alerts';
 import { scheduleSync } from '../services/syncScheduler';
+import { syncRouteAndItinerary } from '../services/routeItinerarySync';
 import { setActiveTab } from './tabs';
 import { openEditStartModal } from './modals';
 import { focusOnLocation, getMap } from '../map/mapManager';
@@ -166,10 +167,10 @@ function updateSegments(mutator, onMapRedraw, extraTripPatch = null) {
     let segments = [...getActiveRouteSegments(trip)];
     const next = mutator(segments);
     if (next !== undefined) segments = next;
-    updateActiveTrip({
+    updateActiveTrip(syncRouteAndItinerary({
         ...withActiveRouteSegments(trip, segments),
         ...(extraTripPatch ?? {}),
-    });
+    }));
     clearRouteLegCache();
     renderRoutePlan();
     onMapRedraw?.();
@@ -189,7 +190,7 @@ function patchSegmentDayMeta(segId, segmentPatch, { syncDayDate = false } = {}, 
             (d.id === seg.dayId ? { ...d, date: segmentPatch.travelDate || null } : d)
         );
     }
-    updateActiveTrip({ ...withActiveRouteSegments(trip, segments), days });
+    updateActiveTrip(syncRouteAndItinerary({ ...withActiveRouteSegments(trip, segments), days }));
     clearRouteLegCache();
     renderRoutePlan();
     onMapRedraw?.();
@@ -507,13 +508,14 @@ function buildChainSegments(trip) {
     const ts = Date.now();
 
     route.forEach((d, i) => {
+        const day = d.dayId ? trip.days?.find((dayItem) => dayItem.id === d.dayId) : null;
         segments.push({
             id: `seg-${ts}-${i}`,
             fromKey,
             toKey: destPointKey(d.id),
             sameRoadAs: null,
-            dayId: null,
-            travelDate: null,
+            dayId: d.dayId || null,
+            travelDate: day?.date || null,
         });
         fromKey = destPointKey(d.id);
     });
@@ -546,7 +548,7 @@ export function bindRoutePlan(onMapRedraw) {
             showAlert('Añade paradas «En ruta» antes de generar la cadena.', 'error');
             return;
         }
-        updateActiveTrip(withActiveRouteSegments(trip, chain));
+        updateActiveTrip(syncRouteAndItinerary(withActiveRouteSegments(trip, chain)));
         clearRouteLegCache();
         renderRoutePlan();
         onMapRedraw?.();

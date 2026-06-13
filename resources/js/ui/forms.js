@@ -5,6 +5,7 @@ import {
 } from '../state/plannerStore';
 import { destPointKey, clearRouteLegCache } from '../services/routing';
 import { withActiveRouteSegments, getActiveRouteSegments } from '../services/routePlans';
+import { syncRouteAndItinerary } from '../services/routeItinerarySync';
 import { defaultFromKey } from './routePlan';
 import { scheduleSync } from '../services/syncScheduler';
 import { populateDaySelect } from './itinerary';
@@ -164,10 +165,11 @@ export function bindForms(onMapRedraw) {
         scheduleSync(true);
 
         if (createSegment && tripBefore) {
-            const fromKey = defaultFromKey(tripBefore);
-            const dayId = assignDayId || getActiveDayId(tripBefore) || null;
-            const day = tripBefore.days?.find((d) => d.id === dayId);
-            const segs = [...getActiveRouteSegments(tripBefore)];
+            const trip = getActiveTrip() ?? tripBefore;
+            const fromKey = defaultFromKey(trip);
+            const dayId = assignDayId || getActiveDayId(trip) || null;
+            const day = trip.days?.find((d) => d.id === dayId);
+            const segs = [...getActiveRouteSegments(trip)];
             segs.push({
                 id: `seg-${Date.now()}`,
                 fromKey,
@@ -176,7 +178,7 @@ export function bindForms(onMapRedraw) {
                 dayId,
                 travelDate: day?.date || null,
             });
-            updateActiveTrip(withActiveRouteSegments(tripBefore, segs));
+            updateActiveTrip(syncRouteAndItinerary(withActiveRouteSegments(trip, segs)));
             clearRouteLegCache();
         }
 
@@ -191,9 +193,11 @@ export function bindForms(onMapRedraw) {
         setTimeout(() => {
             const map = getMap();
             if (!map || !hasMapCoords(newDest)) return;
+            const currentTrip = getActiveTrip();
+            if (!currentTrip) return;
             if (newDest.inRoute) {
-                const prevRoute = trip.destinations.filter((d) => d.inRoute && hasMapCoords(d));
-                const from = prevRoute.length > 0 ? prevRoute[prevRoute.length - 1] : trip.startingPoint;
+                const prevRoute = currentTrip.destinations.filter((d) => d.inRoute && hasMapCoords(d));
+                const from = prevRoute.length > 0 ? prevRoute[prevRoute.length - 1] : currentTrip.startingPoint;
                 map.fitBounds(window.L.latLngBounds([
                     [from.lat, from.lng],
                     [newDest.lat, newDest.lng],

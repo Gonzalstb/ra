@@ -1,3 +1,5 @@
+import { syncRouteAndItinerary } from '../services/routeItinerarySync';
+
 const initialUi = {
     activeTab: 'map',
     isSaving: false,
@@ -137,9 +139,10 @@ export function assignDestinationToDay(destId, dayId) {
         return { ...d, dayId, inRoute: true };
     });
 
-    updateActiveTrip({
+    updateActiveTrip(syncRouteAndItinerary({
+        ...trip,
         destinations: rebuildRouteByDayOrder({ ...trip, destinations }),
-    });
+    }));
 }
 
 export function updateDestinationFields(destId, fields) {
