@@ -160,6 +160,8 @@ export function bindModals(handlers) {
             activityLogs: [],
             returnToStart: true,
             endingPoint: null,
+            routePlans: [{ id: 'rp-1', name: 'Ruta 1', segments: [] }],
+            activeRoutePlanId: 'rp-1',
             routeSegments: [],
             days: [],
             destinations: [],

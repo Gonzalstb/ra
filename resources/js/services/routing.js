@@ -114,9 +114,11 @@ export function resolveRoutePoint(trip, pointKey) {
     return null;
 }
 
+import { getActiveRouteSegments } from './routePlans';
+
 /** Convierte los tramos definidos por el usuario en geometría dibujable. */
 export function resolveDrawableSegments(trip) {
-    const plan = trip.routeSegments ?? [];
+    const plan = getActiveRouteSegments(trip);
     const drawable = [];
 
     for (const seg of plan) {
@@ -207,7 +209,7 @@ export function clearRouteLegCache() {
 
 /** Resumen para chip del mapa (usa caché OSRM si existe). */
 export function estimateRouteSummary(trip) {
-    const plan = trip.routeSegments ?? [];
+    const plan = getActiveRouteSegments(trip);
     const drawable = resolveDrawableSegments(trip);
     let totalMin = 0;
     let cachedLegs = 0;

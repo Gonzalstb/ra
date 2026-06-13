@@ -57,6 +57,14 @@
         </div>
     </div>
 
+    <div id="route-plans-wrap" class="space-y-2 p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+        <div class="flex items-center justify-between gap-2">
+            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Rutas alternativas</p>
+            <p class="text-[9px] text-slate-600">Doble clic en el nombre para renombrar</p>
+        </div>
+        <div id="route-plans-bar" class="flex flex-wrap items-center gap-2"></div>
+    </div>
+
     <div id="route-timeline-wrap" class="hidden">
         <p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Resumen del recorrido</p>
         <div id="route-timeline" class="flex flex-wrap items-center gap-1 text-[10px] font-semibold text-slate-300"></div>

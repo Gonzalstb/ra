@@ -2,6 +2,16 @@ import {
     getActiveTrip, updateActiveTrip, splitDestinations,
 } from '../state/plannerStore';
 import {
+    getActiveRouteSegments,
+    getActiveRoutePlanName,
+    withActiveRouteSegments,
+    withActiveRoutePlanId,
+    addRoutePlan,
+    removeRoutePlan,
+    renameRoutePlan,
+    ensureRoutePlans,
+} from '../services/routePlans';
+import {
     getRoutePointOptions,
     ROUTE_POINT_START,
     destPointKey,
@@ -84,7 +94,7 @@ function buildSelectOptions(trip, selectedKey) {
 }
 
 export function defaultFromKey(trip) {
-    const segs = trip.routeSegments ?? [];
+    const segs = getActiveRouteSegments(trip);
     if (!segs.length) return ROUTE_POINT_START;
     return segs[segs.length - 1].toKey;
 }
@@ -105,10 +115,10 @@ function segmentValidation(trip, seg) {
 function updateSegments(mutator, onMapRedraw) {
     const trip = getActiveTrip();
     if (!trip) return;
-    let segments = [...(trip.routeSegments ?? [])];
+    let segments = [...getActiveRouteSegments(trip)];
     const next = mutator(segments);
     if (next !== undefined) segments = next;
-    updateActiveTrip({ routeSegments: segments });
+    updateActiveTrip(withActiveRouteSegments(trip, segments));
     clearRouteLegCache();
     renderRoutePlan();
     onMapRedraw?.();
@@ -119,7 +129,7 @@ function addSegmentFromMapPoints(fromKey, toKey, onMapRedraw) {
     if (!fromKey || !toKey || fromKey === toKey) return false;
     const trip = getActiveTrip();
     if (!trip) return false;
-    const exists = (trip.routeSegments ?? []).some((s) => s.fromKey === fromKey && s.toKey === toKey);
+    const exists = getActiveRouteSegments(trip).some((s) => s.fromKey === fromKey && s.toKey === toKey);
     if (exists) return false;
 
     updateSegments((segments) => {
@@ -196,7 +206,7 @@ export function handleMapRoutePointSelection(pointKey, onMapRedraw) {
 export function requestDeleteRouteSegment(segId, onMapRedraw) {
     if (!segId) return;
     const trip = getActiveTrip();
-    const exists = (trip?.routeSegments ?? []).some((s) => s.id === segId);
+    const exists = getActiveRouteSegments(trip).some((s) => s.id === segId);
     if (!exists) return;
     updateSegments((segments) => segments.filter((s) => s.id !== segId), onMapRedraw);
     showAlert('Tramo eliminado.', 'info');
@@ -209,12 +219,42 @@ function renderRoutePanelOrigin(trip) {
     }
 }
 
+function renderRoutePlansBar(trip) {
+    const bar = document.getElementById('route-plans-bar');
+    if (!bar) return;
+
+    const normalized = ensureRoutePlans(trip);
+    const activeId = normalized.activeRoutePlanId ?? normalized.routePlans[0]?.id;
+    const canDelete = normalized.routePlans.length > 1;
+
+    bar.innerHTML = `
+        <div class="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+            ${normalized.routePlans.map((plan) => {
+                const isActive = plan.id === activeId;
+                const segCount = plan.segments?.length ?? 0;
+                return `
+                <button type="button" data-select-route-plan="${plan.id}"
+                    class="group flex items-center gap-1 max-w-full min-h-[36px] px-2.5 py-1 rounded-lg text-[10px] font-bold border transition ${isActive
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                        : 'bg-slate-900 text-slate-400 border-slate-700 hover:border-emerald-500/30 hover:text-slate-200'}">
+                    <span class="truncate" data-route-plan-label="${plan.id}">${escapeHtml(plan.name)}</span>
+                    <span class="text-[9px] opacity-70 shrink-0">${segCount} tr.</span>
+                    ${canDelete ? `<span type="button" data-delete-route-plan="${plan.id}" class="ml-0.5 text-rose-400/80 hover:text-rose-300 opacity-0 group-hover:opacity-100 transition" title="Eliminar ruta">✕</span>` : ''}
+                </button>`;
+            }).join('')}
+        </div>
+        <button type="button" id="btn-add-route-plan"
+            class="shrink-0 min-h-[36px] px-2.5 py-1 rounded-lg text-[10px] font-bold text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition">
+            + Ruta
+        </button>`;
+}
+
 function renderRouteTimeline(trip) {
     const wrap = document.getElementById('route-timeline-wrap');
     const el = document.getElementById('route-timeline');
     if (!wrap || !el) return;
 
-    const segments = trip.routeSegments ?? [];
+    const segments = getActiveRouteSegments(trip);
     if (!segments.length) {
         wrap.classList.add('hidden');
         return;
@@ -240,7 +280,7 @@ function renderQuickNextSegment(trip) {
         return;
     }
 
-    const segs = trip.routeSegments ?? [];
+    const segs = getActiveRouteSegments(trip);
     const fromKey = defaultFromKey(trip);
     const usedTo = new Set(segs.map((s) => s.toKey));
     const nextDest = route.find((d) => !usedTo.has(destPointKey(d.id)));
@@ -271,19 +311,21 @@ export function renderMapRouteChip(trip) {
         return;
     }
 
+    const planName = getActiveRoutePlanName(trip);
     const durationPart = summary.durationLabel ? ` · ${summary.durationLabel}` : '';
     chip.className = 'pointer-events-auto flex items-center gap-2 min-h-[44px] px-3.5 py-2 rounded-full bg-emerald-950/95 border border-emerald-500/40 text-emerald-200 text-[11px] font-bold shadow-lg backdrop-blur-md';
-    chip.innerHTML = `<span>${count} tramo${count !== 1 ? 's' : ''}${escapeHtml(durationPart)}</span>`;
+    chip.innerHTML = `<span>${escapeHtml(planName)} · ${count} tramo${count !== 1 ? 's' : ''}${escapeHtml(durationPart)}</span>`;
     chip.dataset.chipMode = 'ready';
 }
 
 export function updateMapRouteGuide(trip) {
     const hint = document.getElementById('guide-route-hint');
     if (!hint || !trip) return;
-    const count = trip.routeSegments?.length ?? 0;
+    const count = getActiveRouteSegments(trip).length;
+    const planName = getActiveRoutePlanName(trip);
     hint.textContent = count === 0
-        ? '0 tramos — abre la pestaña Ruta para planificar el recorrido en coche.'
-        : `${count} tramo(s) definido(s). La ruta está lista; edítala en la pestaña Ruta.`;
+        ? `${planName}: sin tramos — abre la pestaña Ruta para planificar el recorrido en coche.`
+        : `${planName}: ${count} tramo(s). Cambia de ruta arriba si tienes alternativas.`;
 }
 
 export function renderRoutePlan() {
@@ -292,6 +334,7 @@ export function renderRoutePlan() {
     const empty = document.getElementById('route-plan-empty');
     if (!list || !trip) return;
 
+    renderRoutePlansBar(trip);
     renderRoutePanelOrigin(trip);
     renderRouteTimeline(trip);
     renderQuickNextSegment(trip);
@@ -299,7 +342,7 @@ export function renderRoutePlan() {
     renderMapRouteChip(trip);
     updateMapRouteGuide(trip);
 
-    const segments = trip.routeSegments ?? [];
+    const segments = getActiveRouteSegments(trip);
 
     empty?.classList.toggle('hidden', segments.length > 0);
     list.classList.toggle('hidden', segments.length === 0);
@@ -355,7 +398,7 @@ export function renderRoutePlan() {
 }
 
 function fitSegmentOnMap(trip, segId) {
-    const seg = (trip.routeSegments ?? []).find((s) => s.id === segId);
+    const seg = getActiveRouteSegments(trip).find((s) => s.id === segId);
     if (!seg) return;
     const from = resolveRoutePoint(trip, seg.fromKey);
     const to = resolveRoutePoint(trip, seg.toKey);
@@ -402,6 +445,8 @@ function buildChainSegments(trip) {
 }
 
 export function bindRoutePlan(onMapRedraw) {
+    bindRoutePlansBar(onMapRedraw);
+
     document.getElementById('btn-edit-origin-route')?.addEventListener('click', openEditStartModal);
     document.getElementById('btn-focus-origin-route')?.addEventListener('click', () => {
         const trip = getActiveTrip();
@@ -423,7 +468,7 @@ export function bindRoutePlan(onMapRedraw) {
             showAlert('Añade paradas «En ruta» antes de generar la cadena.', 'error');
             return;
         }
-        updateActiveTrip({ routeSegments: chain });
+        updateActiveTrip(withActiveRouteSegments(trip, chain));
         clearRouteLegCache();
         renderRoutePlan();
         onMapRedraw?.();
@@ -505,8 +550,9 @@ export function bindRoutePlan(onMapRedraw) {
         if (sameRoad) {
             const id = sameRoad.dataset.segSameRoad;
             const trip = getActiveTrip();
-            const idx = (trip.routeSegments ?? []).findIndex((s) => s.id === id);
-            const prevId = idx > 0 ? trip.routeSegments[idx - 1].id : null;
+            const idx = getActiveRouteSegments(trip).findIndex((s) => s.id === id);
+            const segs = getActiveRouteSegments(trip);
+            const prevId = idx > 0 ? segs[idx - 1].id : null;
             updateSegments((segments) => segments.map((s) =>
                 s.id === id
                     ? { ...s, sameRoadAs: sameRoad.checked && prevId ? prevId : null }
@@ -548,7 +594,78 @@ export function bindRoutePlan(onMapRedraw) {
 
 export function getDestSegmentNumbers(trip, destId) {
     const key = destPointKey(destId);
-    return (trip.routeSegments ?? [])
+    return getActiveRouteSegments(trip)
         .map((s, i) => (s.toKey === key ? i + 1 : null))
         .filter((n) => n != null);
+}
+
+function switchRoutePlan(planId, onMapRedraw) {
+    const trip = getActiveTrip();
+    if (!trip) return;
+    pendingMapFromKey = null;
+    updateActiveTrip(withActiveRoutePlanId(trip, planId));
+    clearRouteLegCache();
+    renderRoutePlan();
+    onMapRedraw?.();
+    scheduleSync();
+}
+
+function bindRoutePlansBar(onMapRedraw) {
+    const wrap = document.getElementById('route-plans-wrap');
+    if (!wrap || wrap.dataset.bound === '1') return;
+    wrap.dataset.bound = '1';
+    wrap.addEventListener('click', (e) => {
+        const deleteBtn = e.target.closest('[data-delete-route-plan]');
+        if (deleteBtn) {
+            e.stopPropagation();
+            const trip = getActiveTrip();
+            if (!trip) return;
+            const planId = deleteBtn.dataset.deleteRoutePlan;
+            const plan = ensureRoutePlans(trip).routePlans.find((p) => p.id === planId);
+            if (!plan) return;
+            pendingMapFromKey = null;
+            updateActiveTrip(removeRoutePlan(trip, planId));
+            clearRouteLegCache();
+            renderRoutePlan();
+            onMapRedraw?.();
+            scheduleSync();
+            showAlert(`«${plan.name}» eliminada.`, 'info');
+            return;
+        }
+
+        const selectBtn = e.target.closest('[data-select-route-plan]');
+        if (selectBtn && !e.target.closest('[data-delete-route-plan]')) {
+            switchRoutePlan(selectBtn.dataset.selectRoutePlan, onMapRedraw);
+            return;
+        }
+
+        if (e.target.closest('#btn-add-route-plan')) {
+            const trip = getActiveTrip();
+            if (!trip) return;
+            pendingMapFromKey = null;
+            const next = addRoutePlan(trip);
+            updateActiveTrip(next);
+            clearRouteLegCache();
+            renderRoutePlan();
+            onMapRedraw?.();
+            scheduleSync();
+            const name = next.routePlans.find((p) => p.id === next.activeRoutePlanId)?.name ?? 'Nueva ruta';
+            showAlert(`«${name}» creada. Origen y destino del viaje se mantienen; define sus tramos.`, 'success');
+        }
+    });
+
+    wrap.addEventListener('dblclick', (e) => {
+        const label = e.target.closest('[data-route-plan-label]');
+        if (!label) return;
+        const planId = label.dataset.routePlanLabel;
+        const trip = getActiveTrip();
+        if (!trip) return;
+        const plan = ensureRoutePlans(trip).routePlans.find((p) => p.id === planId);
+        if (!plan) return;
+        const nextName = window.prompt('Nombre de la ruta:', plan.name);
+        if (nextName == null) return;
+        updateActiveTrip(renameRoutePlan(trip, planId, nextName));
+        renderRoutePlan();
+        scheduleSync();
+    });
 }

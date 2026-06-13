@@ -2,6 +2,7 @@
 
 namespace App\Services\Trip;
 
+use App\Services\Trip\RoutePlanHelper;
 use App\Models\Destination;
 use App\Models\ItineraryDay;
 use App\Models\Trip;
@@ -65,7 +66,22 @@ class TripSyncService
                         : ($tripData['endingPoint']['lng'] ?? null);
                 }
                 if (Schema::hasColumn('trips', 'route_segments')) {
-                    $attributes['route_segments'] = $tripData['routeSegments'] ?? [];
+                    $routePlans = RoutePlanHelper::normalizeFromTrip(
+                        $tripData['routePlans'] ?? null,
+                        $tripData['routeSegments'] ?? null,
+                        $tripData['activeRoutePlanId'] ?? null,
+                    );
+                    $activeRoutePlanId = RoutePlanHelper::activePlanId(
+                        $routePlans,
+                        $tripData['activeRoutePlanId'] ?? null
+                    );
+                    $attributes['route_segments'] = RoutePlanHelper::activeSegments($routePlans, $activeRoutePlanId);
+                    if (Schema::hasColumn('trips', 'route_plans')) {
+                        $attributes['route_plans'] = $routePlans;
+                    }
+                    if (Schema::hasColumn('trips', 'active_route_plan_id')) {
+                        $attributes['active_route_plan_id'] = $activeRoutePlanId;
+                    }
                 }
 
                 if ($existingTrip) {

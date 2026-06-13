@@ -4,6 +4,7 @@ import {
     appendDestination, updateActiveTrip, addTextStopToDay,
 } from '../state/plannerStore';
 import { destPointKey, clearRouteLegCache } from '../services/routing';
+import { withActiveRouteSegments, getActiveRouteSegments } from '../services/routePlans';
 import { defaultFromKey } from './routePlan';
 import { scheduleSync } from '../services/syncScheduler';
 import { populateDaySelect } from './itinerary';
@@ -164,14 +165,14 @@ export function bindForms(onMapRedraw) {
 
         if (createSegment && tripBefore) {
             const fromKey = defaultFromKey(tripBefore);
-            const segs = [...(tripBefore.routeSegments ?? [])];
+            const segs = [...getActiveRouteSegments(tripBefore)];
             segs.push({
                 id: `seg-${Date.now()}`,
                 fromKey,
                 toKey: destPointKey(newDest.id),
                 sameRoadAs: null,
             });
-            updateActiveTrip({ routeSegments: segs });
+            updateActiveTrip(withActiveRouteSegments(tripBefore, segs));
             clearRouteLegCache();
         }
 

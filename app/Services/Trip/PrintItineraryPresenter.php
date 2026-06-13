@@ -19,12 +19,30 @@ class PrintItineraryPresenter
 
         $resolveKey = fn (string $key): string => $this->labelForRouteKey($key, $trip, $destsById);
 
-        $segments = collect($trip['routeSegments'] ?? [])->values()->map(function (array $seg, int $i) use ($resolveKey) {
+        $routePlans = RoutePlanHelper::normalizeFromTrip(
+            $trip['routePlans'] ?? null,
+            $trip['routeSegments'] ?? null,
+            $trip['activeRoutePlanId'] ?? null,
+        );
+        $activeRoutePlanId = RoutePlanHelper::activePlanId($routePlans, $trip['activeRoutePlanId'] ?? null);
+
+        $mapSegments = fn (array $planSegments) => collect($planSegments)->values()->map(function (array $seg, int $i) use ($resolveKey) {
             return [
                 'num' => $i + 1,
                 'from' => $resolveKey($seg['fromKey'] ?? ''),
                 'to' => $resolveKey($seg['toKey'] ?? ''),
                 'sameRoad' => ! empty($seg['sameRoadAs']),
+            ];
+        });
+
+        $segments = $mapSegments(RoutePlanHelper::activeSegments($routePlans, $activeRoutePlanId));
+
+        $allRoutePlans = collect($routePlans)->map(function (array $plan) use ($mapSegments, $activeRoutePlanId) {
+            return [
+                'id' => $plan['id'] ?? '',
+                'name' => $plan['name'] ?? 'Ruta',
+                'isActive' => ($plan['id'] ?? '') === $activeRoutePlanId,
+                'segments' => $mapSegments($plan['segments'] ?? []),
             ];
         });
 
@@ -62,6 +80,8 @@ class PrintItineraryPresenter
             'origin' => $trip['startingPoint'],
             'endingLabel' => $endingLabel,
             'segments' => $segments,
+            'routePlans' => $allRoutePlans,
+            'activeRoutePlanName' => collect($routePlans)->firstWhere('id', $activeRoutePlanId)['name'] ?? 'Ruta 1',
             'daysPlan' => $daysPlan,
             'routeDests' => $routeDests,
             'freeStops' => $freeStops,

@@ -441,7 +441,30 @@
                 @endforelse
             </section>
 
-            @if($print['segments']->isNotEmpty())
+            @if(($print['routePlans'] ?? collect())->count() > 1)
+                @foreach($print['routePlans'] as $plan)
+                    @if($plan['segments']->isNotEmpty())
+                        <section class="section section--segments">
+                            <div class="section__head">
+                                <h2 class="section__title">{{ $plan['name'] }}{{ $plan['isActive'] ? ' (activa)' : '' }}</h2>
+                            </div>
+                            <ul class="segment-list">
+                                @foreach($plan['segments'] as $seg)
+                                    <li class="segment-item">
+                                        <span class="segment-item__num">{{ $seg['num'] }}</span>
+                                        <div>
+                                            <p class="segment-item__path">{{ $seg['from'] }} → {{ $seg['to'] }}</p>
+                                            @if($seg['sameRoad'])
+                                                <p class="segment-item__hint">↺ Misma vía de ida y vuelta</p>
+                                            @endif
+                                        </div>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </section>
+                    @endif
+                @endforeach
+            @elseif($print['segments']->isNotEmpty())
                 <section class="section section--segments">
                     <div class="section__head">
                         <h2 class="section__title">Tramos de la ruta</h2>

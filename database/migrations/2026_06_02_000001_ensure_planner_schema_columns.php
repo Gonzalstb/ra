@@ -63,6 +63,12 @@ return new class extends Migration
                 if (! Schema::hasColumn('trips', 'route_segments')) {
                     $table->json('route_segments')->nullable();
                 }
+                if (! Schema::hasColumn('trips', 'route_plans')) {
+                    $table->json('route_plans')->nullable();
+                }
+                if (! Schema::hasColumn('trips', 'active_route_plan_id')) {
+                    $table->string('active_route_plan_id')->nullable();
+                }
             });
         }
     }

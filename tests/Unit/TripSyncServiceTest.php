@@ -61,6 +61,8 @@ class TripSyncServiceTest extends TestCase
                     'days' => [],
                     'destinations' => [],
                     'routeSegments' => [],
+                    'routePlans' => [['id' => 'rp-1', 'name' => 'Ruta 1', 'segments' => []]],
+                    'activeRoutePlanId' => 'rp-1',
                 ],
             ],
         ]);
@@ -109,6 +111,8 @@ class TripSyncServiceTest extends TestCase
                     'days' => [],
                     'destinations' => [],
                     'routeSegments' => [],
+                    'routePlans' => [['id' => 'rp-1', 'name' => 'Ruta 1', 'segments' => []]],
+                    'activeRoutePlanId' => 'rp-1',
                 ],
             ],
         ]);
@@ -174,6 +178,8 @@ class TripSyncServiceTest extends TestCase
                         ],
                     ],
                     'routeSegments' => [],
+                    'routePlans' => [['id' => 'rp-1', 'name' => 'Ruta 1', 'segments' => []]],
+                    'activeRoutePlanId' => 'rp-1',
                 ],
             ],
         ]);
@@ -209,6 +215,8 @@ class TripSyncServiceTest extends TestCase
                     'startingPoint' => ['name' => 'Pisa', 'lat' => 43.71, 'lng' => 10.40],
                     'days' => [],
                     'routeSegments' => [],
+                    'routePlans' => [['id' => 'rp-1', 'name' => 'Ruta 1', 'segments' => []]],
+                    'activeRoutePlanId' => 'rp-1',
                     'destinations' => [
                         [
                             'id' => 'dest-san-donato',
@@ -260,6 +268,8 @@ class TripSyncServiceTest extends TestCase
                     'startingPoint' => ['name' => 'Pisa', 'lat' => 43.71, 'lng' => 10.40],
                     'days' => [],
                     'routeSegments' => [],
+                    'routePlans' => [['id' => 'rp-1', 'name' => 'Ruta 1', 'segments' => []]],
+                    'activeRoutePlanId' => 'rp-1',
                     'destinations' => [
                         [
                             'id' => 'dest-long-url',

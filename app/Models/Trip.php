@@ -26,6 +26,8 @@ class Trip extends Model
         'ending_point_lat',
         'ending_point_lng',
         'route_segments',
+        'route_plans',
+        'active_route_plan_id',
     ];
 
     protected function casts(): array
@@ -38,6 +40,7 @@ class Trip extends Model
             'ending_point_lat' => 'float',
             'ending_point_lng' => 'float',
             'route_segments' => 'array',
+            'route_plans' => 'array',
         ];
     }
 

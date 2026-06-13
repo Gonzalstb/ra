@@ -2,6 +2,7 @@
 
 namespace App\Services\Trip;
 
+use App\Services\Trip\RoutePlanHelper;
 use App\Models\Destination;
 use App\Models\ItineraryDay;
 use App\Models\Trip;
@@ -11,6 +12,13 @@ class TripFormatter
 {
     public function format(Trip $trip): array
     {
+        $routePlans = RoutePlanHelper::normalizeFromTrip(
+            $trip->route_plans ?? null,
+            $trip->route_segments ?? null,
+            $trip->active_route_plan_id ?? null,
+        );
+        $activeRoutePlanId = RoutePlanHelper::activePlanId($routePlans, $trip->active_route_plan_id ?? null);
+
         return [
             'id' => $trip->id,
             'name' => $trip->name,
@@ -27,7 +35,9 @@ class TripFormatter
                     'lat' => (float) $trip->ending_point_lat,
                     'lng' => (float) $trip->ending_point_lng,
                 ],
-            'routeSegments' => $trip->route_segments ?? [],
+            'routePlans' => $routePlans,
+            'activeRoutePlanId' => $activeRoutePlanId,
+            'routeSegments' => RoutePlanHelper::activeSegments($routePlans, $activeRoutePlanId),
             'days' => $trip->itineraryDays->map(fn (ItineraryDay $day) => $this->formatDay($day))->values()->all(),
             'destinations' => $trip->destinations->map(fn (Destination $d) => $this->formatDestination($d))->values()->all(),
             'activityLogs' => $trip->activityLogs

@@ -1,4 +1,5 @@
 import { normalizeDestinationsOrder } from '../state/plannerStore';
+import { syncTripRouteFields } from '../services/routePlans';
 
 const PLACE_PREFIXES = [
     { key: 'isWinery', prefix: '[bodega]' },
@@ -27,7 +28,7 @@ function normalizeDescriptionFlags(d) {
 }
 
 export function normalizeTrip(trip) {
-    return {
+    const base = {
         ...trip,
         days: trip.days ?? [],
         ownerId: trip.ownerId ?? null,
@@ -36,7 +37,8 @@ export function normalizeTrip(trip) {
         activityLogs: Array.isArray(trip.activityLogs) ? trip.activityLogs : [],
         returnToStart: trip.returnToStart !== false,
         endingPoint: trip.endingPoint ?? null,
-        routeSegments: trip.routeSegments ?? [],
+        routePlans: trip.routePlans ?? [],
+        activeRoutePlanId: trip.activeRoutePlanId ?? null,
         destinations: normalizeDestinationsOrder(trip.destinations ?? []).map((d) => {
             const flags = normalizeDescriptionFlags(d);
             return {
@@ -56,4 +58,6 @@ export function normalizeTrip(trip) {
             };
         }),
     };
+
+    return syncTripRouteFields(base);
 }
