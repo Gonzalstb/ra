@@ -1,5 +1,5 @@
 import { normalizeDestinationsOrder } from '../state/plannerStore';
-import { syncTripRouteFields } from '../services/routePlans';
+import { syncTripRouteFields, ensureRoutePlans } from '../services/routePlans';
 import { syncRouteAndItinerary } from '../services/routeItinerarySync';
 
 const PLACE_PREFIXES = [
@@ -60,5 +60,5 @@ export function normalizeTrip(trip) {
         }),
     };
 
-    return syncRouteAndItinerary(syncTripRouteFields(base));
+    return syncRouteAndItinerary(syncTripRouteFields(ensureRoutePlans(base)));
 }

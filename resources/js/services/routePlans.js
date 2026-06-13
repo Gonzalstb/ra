@@ -1,17 +1,65 @@
 /** @typedef {{ id: string, name: string, segments: Array<{ id: string, fromKey: string, toKey: string, sameRoadAs: string|null }> }} RoutePlan */
 
+function legacyRouteSegments(trip) {
+    return Array.isArray(trip.routeSegments) ? [...trip.routeSegments] : [];
+}
+
+function repairRoutePlansFromLegacy(trip) {
+    const legacySegments = legacyRouteSegments(trip);
+    if (!legacySegments.length) return trip;
+
+    const routePlans = trip.routePlans.map((plan, index) => {
+        if ((plan.segments?.length ?? 0) > 0) return plan;
+        const activeId = trip.activeRoutePlanId ?? trip.routePlans[0]?.id;
+        if (plan.id === activeId || (index === 0 && !activeId)) {
+            return { ...plan, segments: legacySegments };
+        }
+        return plan;
+    });
+
+    const anyHasSegments = routePlans.some((p) => (p.segments?.length ?? 0) > 0);
+    if (!anyHasSegments) {
+        routePlans[0] = { ...routePlans[0], segments: legacySegments };
+    }
+
+    const activeId = trip.activeRoutePlanId ?? routePlans[0]?.id;
+    const activeSegments = routePlans.find((p) => p.id === activeId)?.segments ?? legacySegments;
+
+    return {
+        ...trip,
+        routePlans,
+        activeRoutePlanId: activeId,
+        routeSegments: activeSegments,
+    };
+}
+
 export function ensureRoutePlans(trip) {
     if (Array.isArray(trip.routePlans) && trip.routePlans.length > 0) {
+        const activeId = trip.activeRoutePlanId ?? trip.routePlans[0]?.id;
+        const activePlan = trip.routePlans.find((p) => p.id === activeId) ?? trip.routePlans[0];
+        const activeSegments = activePlan?.segments ?? [];
+        const legacySegments = legacyRouteSegments(trip);
+
+        if (!activeSegments.length && legacySegments.length) {
+            return repairRoutePlansFromLegacy(trip);
+        }
+
+        const anyPlanHasSegments = trip.routePlans.some((p) => (p.segments?.length ?? 0) > 0);
+        if (!anyPlanHasSegments && legacySegments.length) {
+            return repairRoutePlansFromLegacy(trip);
+        }
+
         return trip;
     }
 
-    const segments = Array.isArray(trip.routeSegments) ? [...trip.routeSegments] : [];
+    const segments = legacyRouteSegments(trip);
     const id = 'rp-1';
 
     return {
         ...trip,
         routePlans: [{ id, name: 'Ruta 1', segments }],
         activeRoutePlanId: id,
+        routeSegments: segments,
     };
 }
 

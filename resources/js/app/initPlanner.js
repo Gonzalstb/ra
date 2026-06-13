@@ -27,6 +27,7 @@ import { getPendingMapRoutePoint, handleMapRoutePointSelection, requestDeleteRou
 let lastRenderedTab = '';
 let lastMapFingerprint = '';
 let mapRedrawInFlight = false;
+let mapRedrawPending = false;
 let mapReady = false;
 
 function bootstrapMap(onMapClick) {
@@ -95,13 +96,19 @@ function shouldRedrawMap(state) {
 }
 
 async function onMapRedraw() {
-    if (mapRedrawInFlight) return;
+    if (mapRedrawInFlight) {
+        mapRedrawPending = true;
+        return;
+    }
     mapRedrawInFlight = true;
     try {
-        await drawMapElements();
-        fitTripBounds();
-        const trip = getActiveTrip();
-        if (trip) renderMapRouteChip(trip);
+        do {
+            mapRedrawPending = false;
+            await drawMapElements();
+            fitTripBounds();
+            const trip = getActiveTrip();
+            if (trip) renderMapRouteChip(trip);
+        } while (mapRedrawPending);
     } finally {
         mapRedrawInFlight = false;
     }

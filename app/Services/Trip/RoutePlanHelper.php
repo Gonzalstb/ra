@@ -7,17 +7,44 @@ class RoutePlanHelper
     /** @return list<array{id: string, name: string, segments: list<array<string, mixed>>}> */
     public static function normalizeFromTrip(?array $routePlans, ?array $routeSegments, ?string $activeId): array
     {
-        if (is_array($routePlans) && $routePlans !== []) {
-            return array_values($routePlans);
-        }
+        $legacySegments = is_array($routeSegments) ? $routeSegments : [];
 
-        $segments = is_array($routeSegments) ? $routeSegments : [];
+        if (is_array($routePlans) && $routePlans !== []) {
+            $plans = array_values($routePlans);
+            $activePlanId = self::activePlanId($plans, $activeId);
+            $activeIndex = null;
+
+            foreach ($plans as $index => $plan) {
+                if (($plan['id'] ?? null) === $activePlanId) {
+                    $activeIndex = $index;
+                    break;
+                }
+            }
+
+            $anyHasSegments = collect($plans)->contains(
+                fn (array $plan) => is_array($plan['segments'] ?? null) && ($plan['segments'] ?? []) !== []
+            );
+
+            if (! $anyHasSegments && $legacySegments !== []) {
+                $plans[0]['segments'] = $legacySegments;
+
+                return $plans;
+            }
+
+            if ($activeIndex !== null && ($plans[$activeIndex]['segments'] ?? []) === [] && $legacySegments !== []) {
+                $plans[$activeIndex]['segments'] = $legacySegments;
+
+                return $plans;
+            }
+
+            return $plans;
+        }
 
         return [
             [
                 'id' => 'rp-1',
                 'name' => 'Ruta 1',
-                'segments' => $segments,
+                'segments' => $legacySegments,
             ],
         ];
     }
