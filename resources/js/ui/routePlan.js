@@ -114,6 +114,7 @@ function renderTripActivity(trip) {
 }
 
 function labelForKey(trip, key) {
+    if (!key) return '(sin elegir)';
     const opt = getRoutePointOptions(trip).find((o) => o.key === key);
     return opt?.label?.replace(/^[^\s]+\s/, '') ?? key;
 }
@@ -216,7 +217,11 @@ function scheduleSegmentDurationPrefetch(trip) {
 export function defaultFromKey(trip) {
     const segs = getActiveRouteSegments(trip);
     if (!segs.length) return ROUTE_POINT_START;
-    return segs[segs.length - 1].toKey;
+    for (let i = segs.length - 1; i >= 0; i -= 1) {
+        const toKey = segs[i].toKey;
+        if (toKey) return toKey;
+    }
+    return ROUTE_POINT_START;
 }
 
 function segmentValidation(trip, seg) {
@@ -760,7 +765,7 @@ export function bindRoutePlan(onMapRedraw) {
             segments.push({
                 id: `seg-${Date.now()}`,
                 fromKey: defaultFromKey(trip),
-                toKey: '',
+                toKey: null,
                 sameRoadAs: null,
                 ...defaultSegmentDayFields(trip),
             });
@@ -807,7 +812,7 @@ export function bindRoutePlan(onMapRedraw) {
         if (toSel) {
             const id = toSel.dataset.segTo;
             updateSegments((segments) => segments.map((s) =>
-                s.id === id ? { ...s, toKey: toSel.value, sameRoadAs: null } : s
+                s.id === id ? { ...s, toKey: toSel.value || null, sameRoadAs: null } : s
             ), onMapRedraw);
             return;
         }
