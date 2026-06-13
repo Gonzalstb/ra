@@ -1,7 +1,7 @@
 <div class="space-y-4 text-left">
     <div>
         <h3 class="text-sm font-bold tracking-wider text-emerald-400 uppercase">Ruta en coche</h3>
-        <p class="text-[11px] text-slate-500 mt-1">Define cada trayecto: Desde → Hasta entre cualquier par de puntos (origen, paradas o puntos libres). En el mapa: «Añadir a la ruta» en un punto y pulsa otro.</p>
+        <p class="text-[11px] text-slate-500 mt-1">Define cada trayecto con los selectores Desde/Hasta (origen, final o paradas). También puedes usar el mapa si lo prefieres.</p>
     </div>
 
     <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-900/80 border border-emerald-500/20">
@@ -76,14 +76,32 @@
         </button>
     </div>
 
+    <div id="route-segment-quick-add" class="p-3 rounded-xl bg-slate-950/60 border border-emerald-500/25 space-y-2">
+        <p class="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Nuevo tramo</p>
+        <div class="grid grid-cols-1 gap-2">
+            <label class="block">
+                <span class="text-[9px] font-bold text-slate-500 uppercase">Desde</span>
+                <select id="quick-add-seg-from" class="w-full mt-0.5 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2.5 text-[11px] text-white outline-none min-h-[44px] focus:border-emerald-500"></select>
+            </label>
+            <label class="block">
+                <span class="text-[9px] font-bold text-slate-500 uppercase">Hasta</span>
+                <select id="quick-add-seg-to" class="w-full mt-0.5 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2.5 text-[11px] text-white outline-none min-h-[44px] focus:border-emerald-500"></select>
+            </label>
+        </div>
+        <button type="button" id="btn-quick-add-segment"
+            class="w-full min-h-[44px] rounded-lg text-[11px] font-bold text-emerald-200 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500/40 transition">
+            Añadir tramo
+        </button>
+    </div>
+
     <div class="flex flex-wrap gap-2">
         <button type="button" id="btn-chain-route"
             class="flex-1 min-w-[120px] min-h-[44px] rounded-lg text-[10px] font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">
             Ruta en cadena
         </button>
         <button type="button" id="btn-add-route-segment"
-            class="flex-1 min-w-[120px] min-h-[44px] rounded-lg text-[10px] font-bold text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 transition">
-            + Tramo
+            class="flex-1 min-w-[120px] min-h-[44px] rounded-lg text-[10px] font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">
+            + Tramo vacío
         </button>
         <button type="button" id="btn-calc-times"
             class="flex-1 min-w-[120px] min-h-[44px] rounded-lg text-[10px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition">
@@ -93,7 +111,7 @@
 
     <div id="route-plan-list" class="space-y-2 hidden"></div>
     <p id="route-plan-empty" class="text-[11px] text-slate-500 italic py-4 text-center bg-slate-950/50 rounded-xl border border-dashed border-slate-700">
-        Sin tramos. Pulsa «+ Tramo» y elige Desde/Hasta, o en el mapa «Añadir a la ruta» en un punto y luego otro.
+        Sin tramos. Usa el formulario «Nuevo tramo» arriba o «+ Tramo vacío» para editarlo después.
     </p>
 
     <div id="trip-activity-wrap" class="space-y-2">

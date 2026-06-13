@@ -14,7 +14,9 @@ import {
 } from '../services/routePlans';
 import {
     getRoutePointOptions,
+    getMapDestinations,
     ROUTE_POINT_START,
+    ROUTE_POINT_END,
     destPointKey,
     clearRouteLegCache,
     resolveRoutePoint,
@@ -370,6 +372,39 @@ function renderQuickNextSegment(trip) {
     btn.dataset.quickTo = destPointKey(nextDest.id);
 }
 
+function suggestQuickAddToKey(trip, fromKey) {
+    const keys = getRoutePointOptions(trip).map((o) => o.key).filter((k) => k !== fromKey);
+    const { route } = splitDestinations(trip.destinations);
+    for (const d of route) {
+        const key = destPointKey(d.id);
+        if (key !== fromKey && keys.includes(key)) return key;
+    }
+    for (const d of getMapDestinations(trip)) {
+        const key = destPointKey(d.id);
+        if (key !== fromKey && keys.includes(key)) return key;
+    }
+    if (keys.includes(ROUTE_POINT_END)) return ROUTE_POINT_END;
+    return keys[0] || '';
+}
+
+function renderQuickAddSegment(trip) {
+    const fromSel = document.getElementById('quick-add-seg-from');
+    const toSel = document.getElementById('quick-add-seg-to');
+    if (!fromSel || !toSel || !trip) return;
+
+    const options = getRoutePointOptions(trip);
+    const prevFrom = fromSel.value;
+    const prevTo = toSel.value;
+    const defaultFrom = defaultFromKey(trip);
+    const fromKey = options.some((o) => o.key === prevFrom) ? prevFrom : defaultFrom;
+    let toKey = options.some((o) => o.key === prevTo) ? prevTo : suggestQuickAddToKey(trip, fromKey);
+
+    fromSel.innerHTML = buildSelectOptions(trip, fromKey);
+    toSel.innerHTML = buildSelectOptions(trip, toKey);
+    fromSel.value = fromKey;
+    if (toKey) toSel.value = toKey;
+}
+
 export function renderMapRouteChip(trip) {
     const chip = document.getElementById('map-route-chip');
     if (!chip) return;
@@ -411,6 +446,7 @@ export function renderRoutePlan() {
     renderRoutePanelOrigin(trip);
     renderRouteTimeline(trip);
     renderQuickNextSegment(trip);
+    renderQuickAddSegment(trip);
     renderTripActivity(trip);
     renderMapRouteChip(trip);
     updateMapRouteGuide(trip);
@@ -584,29 +620,73 @@ export function bindRoutePlan(onMapRedraw) {
         fitSegmentOnMap(trip, btn.dataset.timelineSeg);
     });
 
-    document.getElementById('btn-add-route-segment')?.addEventListener('click', () => {
+    document.getElementById('btn-quick-add-segment')?.addEventListener('click', () => {
         const trip = getActiveTrip();
         if (!trip) return;
-
-        const mapDests = getRoutePointOptions(trip).filter(
-            (o) => o.key !== ROUTE_POINT_START && o.key !== ROUTE_POINT_END
-        );
-        if (!mapDests.length && getRoutePointOptions(trip).length <= 1) {
-            showAlert('Añade al menos una parada con ubicación en el mapa.', 'error');
+        const fromKey = document.getElementById('quick-add-seg-from')?.value;
+        const toKey = document.getElementById('quick-add-seg-to')?.value;
+        if (!fromKey || !toKey) {
+            showAlert('Elige puntos en Desde y Hasta.', 'error');
+            return;
+        }
+        if (fromKey === toKey) {
+            showAlert('Desde y Hasta deben ser puntos distintos.', 'error');
+            return;
+        }
+        if (!resolveRoutePoint(trip, fromKey) || !resolveRoutePoint(trip, toKey)) {
+            showAlert('Uno de los puntos elegidos no tiene ubicación válida.', 'error');
             return;
         }
 
         updateSegments((segments) => {
             segments.push({
                 id: `seg-${Date.now()}`,
-                fromKey: '',
+                fromKey,
+                toKey,
+                sameRoadAs: null,
+                ...defaultSegmentDayFields(trip),
+            });
+        }, onMapRedraw);
+
+        const tripAfter = getActiveTrip();
+        if (tripAfter) {
+            const fromSel = document.getElementById('quick-add-seg-from');
+            const toSel = document.getElementById('quick-add-seg-to');
+            if (fromSel) fromSel.value = toKey;
+            if (toSel) {
+                toSel.innerHTML = buildSelectOptions(tripAfter, '');
+                toSel.value = suggestQuickAddToKey(tripAfter, toKey);
+            }
+        }
+        showAlert('Tramo añadido.', 'success');
+    });
+
+    document.getElementById('quick-add-seg-from')?.addEventListener('change', () => {
+        const trip = getActiveTrip();
+        if (!trip) return;
+        const fromSel = document.getElementById('quick-add-seg-from');
+        const toSel = document.getElementById('quick-add-seg-to');
+        if (!fromSel || !toSel) return;
+        const toKey = suggestQuickAddToKey(trip, fromSel.value);
+        toSel.innerHTML = buildSelectOptions(trip, toKey);
+        if (toKey) toSel.value = toKey;
+    });
+
+    document.getElementById('btn-add-route-segment')?.addEventListener('click', () => {
+        const trip = getActiveTrip();
+        if (!trip) return;
+
+        updateSegments((segments) => {
+            segments.push({
+                id: `seg-${Date.now()}`,
+                fromKey: defaultFromKey(trip),
                 toKey: '',
                 sameRoadAs: null,
                 ...defaultSegmentDayFields(trip),
             });
         }, onMapRedraw);
 
-        showAlert('Tramo vacío añadido. Elige Desde y Hasta entre todos tus puntos.', 'success');
+        showAlert('Tramo vacío añadido. Completa Desde y Hasta en la lista.', 'success');
     });
 
     document.getElementById('route-plan-list')?.addEventListener('change', (e) => {
