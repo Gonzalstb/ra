@@ -4,6 +4,7 @@ import {
     formatDuration,
     clearRouteLegCache,
     resolveDrawableSegments,
+    resolveRoutePoint,
     computeRouteDurations,
     reverseGeometry,
     getTripEndPoint,
@@ -223,7 +224,40 @@ function escapeMapHtml(text) {
 
 const GHOST_PLAN_COLORS = ['#64748b', '#94a3b8', '#475569'];
 
-async function drawOneRouteSegment(L, drawable, {
+function allTripSegments(trip) {
+    const segments = [];
+    ensureRoutePlans(trip).routePlans.forEach((plan) => {
+        segments.push(...(plan.segments ?? []));
+    });
+    return segments;
+}
+
+async function resolveSameRoadLeg(trip, drawable, legBySegmentId) {
+    let refLeg = legBySegmentId.get(drawable.sameRoadAs);
+    if (refLeg?.geometry?.length) return refLeg;
+
+    const refSeg = allTripSegments(trip).find((s) => s.id === drawable.sameRoadAs);
+    if (!refSeg?.fromKey || !refSeg?.toKey) return null;
+
+    const from = resolveRoutePoint(trip, refSeg.fromKey);
+    const to = resolveRoutePoint(trip, refSeg.toKey);
+    if (!from || !to) return null;
+
+    refLeg = await fetchRouteLeg(
+        { lat: from.lat, lng: from.lng },
+        { lat: to.lat, lng: to.lng },
+    );
+    if (refLeg) legBySegmentId.set(drawable.sameRoadAs, refLeg);
+    return refLeg;
+}
+
+function tripHasDrawableSegments(trip) {
+    const normalized = ensureRoutePlans(trip);
+    if (normalized.routePlans.some((p) => (p.segments?.length ?? 0) > 0)) return true;
+    return (getActiveRouteSegments(trip).length ?? 0) > 0 || (trip.routeSegments?.length ?? 0) > 0;
+}
+
+async function drawOneRouteSegment(L, trip, drawable, {
     isActive,
     planName,
     overlapKeys,
@@ -239,9 +273,10 @@ async function drawOneRouteSegment(L, drawable, {
     let lineCoords;
     let leg = null;
     let durationLabel;
+    let isFallbackLine = false;
 
     if (drawable.sameRoadAs) {
-        const refLeg = legBySegmentId.get(drawable.sameRoadAs);
+        const refLeg = await resolveSameRoadLeg(trip, drawable, legBySegmentId);
         if (!refLeg?.geometry?.length) return false;
         lineCoords = coordsToLatLngs(reverseGeometry(refLeg.geometry));
         durationLabel = formatDuration(refLeg.durationMin ?? 0);
@@ -250,10 +285,18 @@ async function drawOneRouteSegment(L, drawable, {
             { lat: drawable.from.lat, lng: drawable.from.lng },
             { lat: drawable.to.lat, lng: drawable.to.lng },
         );
-        if (!leg?.geometry?.length) return false;
-        legBySegmentId.set(drawable.id, leg);
-        lineCoords = coordsToLatLngs(leg.geometry);
-        durationLabel = leg.durationFormatted ?? formatDuration(leg.durationMin);
+        if (leg?.geometry?.length) {
+            legBySegmentId.set(drawable.id, leg);
+            lineCoords = coordsToLatLngs(leg.geometry);
+            durationLabel = leg.durationFormatted ?? formatDuration(leg.durationMin);
+        } else {
+            lineCoords = [
+                [drawable.from.lat, drawable.from.lng],
+                [drawable.to.lat, drawable.to.lng],
+            ];
+            durationLabel = '—';
+            isFallbackLine = true;
+        }
     }
 
     if (isActive && drawable.toDestId) {
@@ -265,6 +308,11 @@ async function drawOneRouteSegment(L, drawable, {
     let weight = 5;
     let opacity = 0.92;
     let dashArray = drawable.sameRoadAs ? '10, 8' : null;
+    if (isFallbackLine) {
+        weight = isActive ? 4 : 3;
+        opacity = isActive ? 0.75 : 0.45;
+        dashArray = '6, 10';
+    }
 
     if (!isActive) {
         lineColor = drawable.lineColor || GHOST_PLAN_COLORS[ghostOffsetIndex % GHOST_PLAN_COLORS.length];
@@ -339,46 +387,54 @@ async function drawRouteSegments(L, trip) {
     const overlapKeys = getOverlappingSegmentInfo(trip);
     const legBySegmentId = new Map();
     const durationById = {};
-    let allOk = false;
+    let drewAny = false;
 
     updateMapOverlapLegend(trip);
+
+    const activePlan = normalized.routePlans.find((p) => p.id === activeId);
+    if (activePlan?.segments?.length) {
+        const drawableList = resolveDrawableSegments(trip, activePlan.segments);
+        for (const drawable of drawableList) {
+            try {
+                const ok = await drawOneRouteSegment(L, trip, drawable, {
+                    isActive: true,
+                    planName: activePlan.name,
+                    overlapKeys,
+                    legBySegmentId,
+                    durationById,
+                    ghostOffsetIndex: 0,
+                });
+                if (ok) drewAny = true;
+            } catch (err) {
+                console.error('Error dibujando tramo activo', drawable.id, err);
+            }
+        }
+    }
 
     const inactivePlans = normalized.routePlans.filter((p) => p.id !== activeId);
     let ghostIndex = 0;
     for (const plan of inactivePlans) {
         const drawableList = resolveDrawableSegments(trip, plan.segments ?? []);
         for (const drawable of drawableList) {
-            const ok = await drawOneRouteSegment(L, drawable, {
-                isActive: false,
-                planName: plan.name,
-                overlapKeys,
-                legBySegmentId,
-                durationById,
-                ghostOffsetIndex: ghostIndex,
-            });
-            if (ok) allOk = true;
+            try {
+                const ok = await drawOneRouteSegment(L, trip, drawable, {
+                    isActive: false,
+                    planName: plan.name,
+                    overlapKeys,
+                    legBySegmentId,
+                    durationById,
+                    ghostOffsetIndex: ghostIndex,
+                });
+                if (ok) drewAny = true;
+            } catch (err) {
+                console.error('Error dibujando tramo alternativo', drawable.id, err);
+            }
         }
         ghostIndex += 1;
     }
 
-    const activePlan = normalized.routePlans.find((p) => p.id === activeId);
-    if (activePlan?.segments?.length) {
-        const drawableList = resolveDrawableSegments(trip, activePlan.segments);
-        for (const drawable of drawableList) {
-            const ok = await drawOneRouteSegment(L, drawable, {
-                isActive: true,
-                planName: activePlan.name,
-                overlapKeys,
-                legBySegmentId,
-                durationById,
-                ghostOffsetIndex: 0,
-            });
-            if (ok) allOk = true;
-        }
-    }
-
     persistDurationsIfChanged(durationById);
-    return allOk;
+    return drewAny;
 }
 
 function bindDestinationLongPress(marker, destId) {
@@ -430,11 +486,10 @@ export async function applyOsrmDurationsToTrip() {
     const trip = getActiveTrip();
     if (!trip) return false;
 
-    if (!(trip.routeSegments ?? []).length) return false;
+    if (!getActiveRouteSegments(trip).length && !(trip.routeSegments?.length)) return false;
 
     const durationById = await computeRouteDurations(trip);
     const changed = persistDurationsIfChanged(durationById);
-    clearRouteLegCache();
     return changed || Object.keys(durationById).length > 0;
 }
 
@@ -588,13 +643,12 @@ export async function drawMapElements() {
         layers.markers.push(marker);
     });
 
-    if (ensureRoutePlans(trip).routePlans.some((p) => (p.segments?.length ?? 0) > 0)) {
+    if (tripHasDrawableSegments(trip)) {
         setRoutingLoading(true);
         try {
-            const ok = await drawRouteSegments(L, trip);
-            if (!ok) {
-                // Evitamos fijar avisos visuales en el mapa cuando el trazado falla.
-            }
+            await drawRouteSegments(L, trip);
+        } catch (err) {
+            console.error('Error dibujando rutas en el mapa', err);
         } finally {
             setRoutingLoading(false);
         }
