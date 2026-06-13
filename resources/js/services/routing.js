@@ -61,7 +61,14 @@ export function parseDestPointKey(key) {
     return key.slice(5);
 }
 
-/** Opciones para selects Desde / Hasta. */
+/** Paradas con chincheta en el mapa (en ruta o punto libre). */
+export function getMapDestinations(trip) {
+    return (trip.destinations ?? []).filter(
+        (d) => !d.isTextOnly && d.lat != null && d.lng != null
+    );
+}
+
+/** Opciones para selects Desde / Hasta y selección en mapa. */
 export function getRoutePointOptions(trip) {
     const options = [
         { key: ROUTE_POINT_START, label: `🟢 Origen: ${trip.startingPoint.name}` },
@@ -72,15 +79,17 @@ export function getRoutePointOptions(trip) {
         || (end.lat === trip.startingPoint.lat && end.lng === trip.startingPoint.lng);
 
     if (!endIsStart) {
-        options.push({ key: ROUTE_POINT_END, label: `🏁 Final: ${end.name}` });
+        options.push({ key: ROUTE_POINT_END, label: `🏁 Final: ${end.name ?? 'Punto final'}` });
     }
 
-    (trip.destinations ?? []).forEach((d) => {
-        if (!d.inRoute || d.isTextOnly) return;
-        const n = trip.destinations.filter((x) => x.inRoute).findIndex((x) => x.id === d.id) + 1;
+    const routeIds = (trip.destinations ?? []).filter((d) => d.inRoute).map((d) => d.id);
+
+    getMapDestinations(trip).forEach((d) => {
+        const routeIndex = routeIds.indexOf(d.id);
+        const prefix = routeIndex >= 0 ? `#${routeIndex + 1}` : '🔍';
         options.push({
             key: destPointKey(d.id),
-            label: `#${n} ${d.name}`,
+            label: `${prefix} ${d.name}`,
         });
     });
 

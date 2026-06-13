@@ -8,6 +8,7 @@ import {
     reverseGeometry,
     getTripEndPoint,
     coordsNearlyEqual,
+    getMapDestinations,
 } from '../services/routing';
 import { mapsLinkHtml } from '../services/mapsLinks';
 import { showAlert } from '../ui/alerts';
@@ -24,6 +25,7 @@ let routeMapHandlers = {
     onSelectPoint: null,
     onDeleteSegmentRequest: null,
     getPendingFromPoint: null,
+    isRoutePickPending: null,
 };
 
 export function setRouteMapHandlers(handlers = {}) {
@@ -386,7 +388,7 @@ export async function drawMapElements() {
         <div class="p-2 font-sans text-slate-200">
           <span class="bg-emerald-950 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-800">Punto de Origen</span>
           <h4 class="font-bold text-slate-100 text-sm mt-1.5">${startingPoint.name}</h4>
-          <button type="button" data-route-pick-point="${ROUTE_POINT_START}" class="mt-2 px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold">Seleccionar para tramo</button>
+          <button type="button" data-route-pick-point="${ROUTE_POINT_START}" class="mt-2 px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold">Añadir a la ruta</button>
         </div>`);
 
     layers.markers.push(startMarker);
@@ -414,12 +416,14 @@ export async function drawMapElements() {
             <div class="p-2 font-sans text-slate-200">
               <span class="bg-amber-950 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-700">Punto final</span>
               <h4 class="font-bold text-slate-100 text-sm mt-1.5">${endPoint.name}</h4>
-              <button type="button" data-route-pick-point="${ROUTE_POINT_END}" class="mt-2 px-2 py-1 rounded bg-amber-600 hover:bg-amber-500 text-slate-950 text-[10px] font-bold">Seleccionar para tramo</button>
+              <button type="button" data-route-pick-point="${ROUTE_POINT_END}" class="mt-2 px-2 py-1 rounded bg-amber-600 hover:bg-amber-500 text-slate-950 text-[10px] font-bold">Añadir a la ruta</button>
             </div>`);
         layers.markers.push(endMarker);
     }
 
     const routeDestinations = destinations.filter((d) => d.inRoute && d.lat != null && d.lng != null && !d.isTextOnly);
+    const mapDestinations = getMapDestinations(trip);
+    const pickPending = routeMapHandlers.isRoutePickPending?.() ?? false;
 
     destinations.forEach((dest) => {
         if (dest.isTextOnly || dest.lat == null || dest.lng == null) return;
@@ -465,6 +469,8 @@ export async function drawMapElements() {
             ? `<div class="mt-2">${mapsLinkHtml(prevForMaps, { lat: dest.lat, lng: dest.lng })}</div>`
             : '';
 
+        const routePickBtn = `<button type="button" data-route-pick-point="${destPointKey(dest.id)}" class="mt-2 px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold">${pickPending ? 'Usar como destino del tramo' : 'Añadir a la ruta'}</button>`;
+
         const popupContent = `
         <div class="w-64 overflow-hidden rounded-lg font-sans">
           <img src="${dest.photoUrl}" class="w-full h-32 object-cover m-0" alt="" />
@@ -480,8 +486,8 @@ export async function drawMapElements() {
                 🚗 ${dest.duration} <span class="text-slate-500 font-normal">· en coche</span>
               </div>
               ${mapsBtn}
-              <button type="button" data-route-pick-point="${destPointKey(dest.id)}" class="mt-2 px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold">Seleccionar para tramo</button>
               ` : ''}
+            ${routePickBtn}
           </div>
         </div>`;
 
@@ -489,6 +495,11 @@ export async function drawMapElements() {
             .addTo(mapInstance)
             .bindPopup(popupContent, { maxWidth: 280, padding: 0 });
         bindDestinationLongPress(marker, dest.id);
+        marker.on('click', () => {
+            if (routeMapHandlers.isRoutePickPending?.()) {
+                routeMapHandlers.onSelectPoint?.(destPointKey(dest.id));
+            }
+        });
 
         layers.markers.push(marker);
     });
@@ -509,30 +520,30 @@ export async function drawMapElements() {
     if (pending) {
         const candidates = [
             { lat: startingPoint.lat, lng: startingPoint.lng, key: ROUTE_POINT_START },
-            ...routeDestinations.map((d) => ({ lat: d.lat, lng: d.lng, key: destPointKey(d.id) })),
+            ...mapDestinations.map((d) => ({ lat: d.lat, lng: d.lng, key: destPointKey(d.id) })),
         ];
         if (showEndMarker) {
             candidates.push({ lat: endPoint.lat, lng: endPoint.lng, key: ROUTE_POINT_END });
         }
-        const nearest = candidates
-            .filter((c) => c.key !== pending.key)
-            .sort((a, b) => ((a.lat - pending.lat) ** 2 + (a.lng - pending.lng) ** 2) - ((b.lat - pending.lat) ** 2 + (b.lng - pending.lng) ** 2))[0];
 
-        if (nearest) {
-            layers.polylines.push(L.polyline([[pending.lat, pending.lng], [nearest.lat, nearest.lng]], {
-                color: '#f59e0b',
-                weight: 3,
-                opacity: 0.8,
-                dashArray: '6, 6',
-            }).addTo(mapInstance));
-            labelAtCoord(
-                L,
-                pending.lat,
-                pending.lng,
-                '<div class="px-2 py-1 rounded-md bg-amber-950/95 border border-amber-500/40 text-[10px] text-amber-200 font-bold">Punto inicial seleccionado. Elige el segundo punto.</div>',
-                [110, 12]
-            );
-        }
+        candidates
+            .filter((c) => c.key !== pending.key)
+            .forEach((c) => {
+                layers.polylines.push(L.polyline([[pending.lat, pending.lng], [c.lat, c.lng]], {
+                    color: '#f59e0b',
+                    weight: 2,
+                    opacity: 0.35,
+                    dashArray: '4, 8',
+                }).addTo(mapInstance));
+            });
+
+        labelAtCoord(
+            L,
+            pending.lat,
+            pending.lng,
+            '<div class="px-2 py-1 rounded-md bg-amber-950/95 border border-amber-500/40 text-[10px] text-amber-200 font-bold">Origen del tramo. Pulsa otro punto.</div>',
+            [110, 12]
+        );
     }
 }
 

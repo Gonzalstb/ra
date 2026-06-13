@@ -76,9 +76,11 @@ function labelForKey(trip, key) {
 }
 
 function buildSelectOptions(trip, selectedKey) {
-    return getRoutePointOptions(trip).map((opt) =>
+    const placeholder = `<option value="" ${!selectedKey ? 'selected' : ''}>— Elige punto —</option>`;
+    const opts = getRoutePointOptions(trip).map((opt) =>
         `<option value="${escapeHtml(opt.key)}" ${opt.key === selectedKey ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`
     ).join('');
+    return placeholder + opts;
 }
 
 export function defaultFromKey(trip) {
@@ -131,6 +133,30 @@ function addSegmentFromMapPoints(fromKey, toKey, onMapRedraw) {
     return true;
 }
 
+export function isMapRoutePickPending() {
+    return pendingMapFromKey != null;
+}
+
+export function cancelMapRoutePick(onMapRedraw) {
+    if (!pendingMapFromKey) return;
+    pendingMapFromKey = null;
+    onMapRedraw?.();
+    showAlert('Selección de tramo cancelada.', 'info');
+}
+
+export function startMapRouteFromPoint(pointKey, onMapRedraw) {
+    const trip = getActiveTrip();
+    if (!trip || !pointKey) return false;
+    const point = resolveRoutePoint(trip, pointKey);
+    if (!point) return false;
+
+    pendingMapFromKey = pointKey;
+    onMapRedraw?.();
+    setActiveTab('map');
+    showAlert(`«${point.name ?? labelForKey(trip, pointKey)}» seleccionado. Pulsa otro punto para crear el tramo.`, 'info');
+    return true;
+}
+
 export function getPendingMapRoutePoint() {
     const trip = getActiveTrip();
     if (!trip || !pendingMapFromKey) return null;
@@ -145,24 +171,23 @@ export function handleMapRoutePointSelection(pointKey, onMapRedraw) {
     if (!resolveRoutePoint(trip, pointKey)) return;
 
     if (!pendingMapFromKey) {
-        pendingMapFromKey = pointKey;
-        onMapRedraw?.();
-        showAlert('Punto inicial seleccionado. Ahora elige el segundo punto.', 'info');
+        startMapRouteFromPoint(pointKey, onMapRedraw);
         return;
     }
 
     if (pendingMapFromKey === pointKey) {
-        pendingMapFromKey = null;
-        onMapRedraw?.();
-        showAlert('Selección cancelada.', 'info');
+        cancelMapRoutePick(onMapRedraw);
         return;
     }
 
     const fromKey = pendingMapFromKey;
+    const fromLabel = labelForKey(trip, fromKey);
     pendingMapFromKey = null;
     const created = addSegmentFromMapPoints(fromKey, pointKey, onMapRedraw);
     if (created) {
-        showAlert('Tramo añadido desde el mapa.', 'success');
+        const toLabel = labelForKey(trip, pointKey);
+        showAlert(`Tramo creado: ${fromLabel} → ${toLabel}`, 'success');
+        setActiveTab('route');
     } else {
         showAlert('No se añadió el tramo (ya existía o era inválido).', 'info');
     }
@@ -436,26 +461,24 @@ export function bindRoutePlan(onMapRedraw) {
         const trip = getActiveTrip();
         if (!trip) return;
 
-        const { route } = splitDestinations(trip.destinations);
-        if (!route.length) {
-            showAlert('Añade al menos una parada «En ruta» antes de definir tramos.', 'error');
+        const mapDests = getRoutePointOptions(trip).filter(
+            (o) => o.key !== ROUTE_POINT_START && o.key !== ROUTE_POINT_END
+        );
+        if (!mapDests.length && getRoutePointOptions(trip).length <= 1) {
+            showAlert('Añade al menos una parada con ubicación en el mapa.', 'error');
             return;
         }
-
-        const fromKey = defaultFromKey(trip);
-        const usedTo = new Set((trip.routeSegments ?? []).map((s) => s.toKey));
-        const firstDest = route.find((d) => !usedTo.has(destPointKey(d.id))) ?? route[0];
 
         updateSegments((segments) => {
             segments.push({
                 id: `seg-${Date.now()}`,
-                fromKey,
-                toKey: destPointKey(firstDest.id),
+                fromKey: '',
+                toKey: '',
                 sameRoadAs: null,
             });
         }, onMapRedraw);
 
-        showAlert('Tramo añadido. Ajusta Desde y Hasta si hace falta.', 'success');
+        showAlert('Tramo vacío añadido. Elige Desde y Hasta entre todos tus puntos.', 'success');
     });
 
     document.getElementById('route-plan-list')?.addEventListener('change', (e) => {

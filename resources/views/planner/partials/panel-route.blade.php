@@ -1,7 +1,7 @@
 <div class="space-y-4 text-left">
     <div>
         <h3 class="text-sm font-bold tracking-wider text-emerald-400 uppercase">Ruta en coche</h3>
-        <p class="text-[11px] text-slate-500 mt-1">Define cada trayecto: Desde → Hasta. El mapa traza el camino más corto solo en ese tramo.</p>
+        <p class="text-[11px] text-slate-500 mt-1">Define cada trayecto: Desde → Hasta entre cualquier par de puntos (origen, paradas o puntos libres). En el mapa: «Añadir a la ruta» en un punto y pulsa otro.</p>
     </div>
 
     <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-900/80 border border-emerald-500/20">
@@ -85,7 +85,7 @@
 
     <div id="route-plan-list" class="space-y-2 hidden"></div>
     <p id="route-plan-empty" class="text-[11px] text-slate-500 italic py-4 text-center bg-slate-950/50 rounded-xl border border-dashed border-slate-700">
-        Sin tramos. Añade paradas «En ruta» en Destinos y pulsa «+ Tramo» o «Ruta en cadena».
+        Sin tramos. Pulsa «+ Tramo» y elige Desde/Hasta, o en el mapa «Añadir a la ruta» en un punto y luego otro.
     </p>
 
     <div id="trip-activity-wrap" class="space-y-2">

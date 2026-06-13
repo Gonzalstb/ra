@@ -8,7 +8,8 @@ import { setActiveTab } from './tabs';
 import { focusOnLocation } from '../map/mapManager';
 import { openDeleteDestModal, openEditDestModal } from './modals';
 import { renderTripReturnSettings } from './tripReturn';
-import { renderRoutePlan, getDestSegmentNumbers } from './routePlan';
+import { renderRoutePlan, getDestSegmentNumbers, startMapRouteFromPoint } from './routePlan';
+import { destPointKey } from '../services/routing';
 import {
     destinationFreePoiLabel, destinationPlaceBadgeHtml, destinationPriceBadgeHtml,
     isTextOnlyDestination, canTogglePriceOnStop, toggleDestinationPriceBadge,
@@ -64,9 +65,14 @@ function renderActionButtons(dest, isRoute) {
     const toggleClass = isRoute
         ? 'bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/20'
         : 'bg-sky-500/10 hover:bg-sky-500 text-sky-400 hover:text-slate-950 border border-sky-500/20';
+    const canRoutePick = !isTextOnlyDestination(dest) && dest.lat != null && dest.lng != null;
+    const routeFromBtn = canRoutePick
+        ? `<button type="button" data-route-from-dest="${dest.id}" class="dest-action-btn p-2 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition border border-emerald-500/20" title="Tramo desde aquí">🛣️</button>`
+        : '';
 
     return `
     <div class="dest-card-actions flex items-center justify-end gap-1 shrink-0">
+      ${routeFromBtn}
       <button type="button" data-edit-dest="${dest.id}" class="dest-action-btn p-2 text-slate-500 hover:text-sky-400 hover:bg-slate-800 rounded-lg transition" title="Editar">${icon('edit')}</button>
       <button type="button" data-delete-dest="${dest.id}" data-dest-name="${escapeHtml(dest.name)}" class="dest-action-btn p-2 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition" title="Eliminar">${icon('trash')}</button>
       <button type="button" data-toggle-route="${dest.id}" class="dest-action-btn p-2 ${toggleClass} rounded-lg transition" title="${isRoute ? 'Desconectar de ruta' : 'Conectar a ruta'}">${isRoute ? icon('linkOff') : icon('link')}</button>
@@ -265,6 +271,13 @@ export function bindSidebarListEvents(onMapRedraw) {
                 renderSidebar();
                 onMapRedraw?.();
             }
+            return;
+        }
+
+        const routeFromBtn = e.target.closest('[data-route-from-dest]');
+        if (routeFromBtn) {
+            e.stopPropagation();
+            startMapRouteFromPoint(destPointKey(routeFromBtn.dataset.routeFromDest), onMapRedraw);
             return;
         }
 
