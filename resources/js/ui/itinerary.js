@@ -131,6 +131,7 @@ function renderPlanStopCard(d, trip, routeIndex) {
         ? `data-day-maps data-from-lat="${fromLat}" data-from-lng="${fromLng}" data-to-lat="${d.lat}" data-to-lng="${d.lng}"`
         : '';
     const segNums = getDestSegmentNumbers(trip, d.id);
+    const stopOrderNum = getDestRouteOrderNumber(trip, d.id) ?? (routeIndex >= 0 ? routeIndex + 1 : null);
     const segBadge = segNums.length
         ? `<span class="text-[8px] font-bold text-emerald-400/90 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded">Tramo ${segNums.join(', ')}</span>`
         : '';
@@ -150,7 +151,7 @@ function renderPlanStopCard(d, trip, routeIndex) {
                 ${textOnly
         ? `<div class="w-11 h-11 rounded-lg border border-violet-500/40 bg-violet-950/80 flex items-center justify-center text-lg">${placeMeta ? placeMeta.icon : '📝'}</div>`
         : `<img src="${escapeHtml(d.photoUrl)}" alt="" class="w-11 h-11 rounded-lg object-cover border ${reserved ? 'border-emerald-500/60' : 'border-slate-700'}" />
-                ${d.inRoute || getDestRouteOrderNumber(trip, d.id) != null ? `<span class="absolute -bottom-1 -right-1 text-[8px] font-black bg-slate-950 text-amber-400 px-1 rounded border border-amber-500/30">${getDestRouteOrderNumber(trip, d.id) ?? routeIndex + 1}</span>` : ''}`}
+                ${stopOrderNum != null ? `<span class="absolute -bottom-1 -right-1 text-[8px] font-black bg-slate-950 text-amber-400 px-1 rounded border border-amber-500/30">${stopOrderNum}</span>` : ''}`}
             </div>
             <div class="flex-1 min-w-0">
                 <div class="flex flex-wrap items-center gap-1${canTogglePriceOnStop(d) ? ' cursor-pointer' : ''}"${priceToggleAttrs}>
