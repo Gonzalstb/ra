@@ -55,6 +55,7 @@ function updateRouteOverlapHint(trip) {
     el.classList.toggle('hidden', !show);
 }
 let pendingDeleteRoutePlan = null;
+let pendingMapFromKey = null;
 
 function escapeHtml(text) {
     const div = document.createElement('div');
