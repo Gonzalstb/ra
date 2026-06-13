@@ -31,8 +31,29 @@ import { setActiveTab } from './tabs';
 import { openEditStartModal } from './modals';
 import { focusOnLocation, getMap } from '../map/mapManager';
 import { effectiveSegmentLineColor, buildSegmentColorSwatchesHtml } from '../utils/segmentColorUi';
+import {
+    overlappingPlanNamesForSegment,
+    isSegmentOverlapping,
+    getActivePlanId,
+    tripHasRouteOverlaps,
+} from '../services/routeOverlap';
 
-let pendingMapFromKey = null;
+function buildSegmentOverlapHtml(trip, seg) {
+    if (!isSegmentOverlapping(trip, seg)) return '';
+    const names = overlappingPlanNamesForSegment(trip, seg, getActivePlanId(trip));
+    if (!names.length) return '';
+    return `<p class="text-[9px] font-semibold text-violet-300/95 leading-snug flex items-start gap-1.5">
+        <span class="mt-1 shrink-0 w-4 h-0 border-t-2 border-dashed border-violet-400"></span>
+        <span>Comparte tramo con <strong class="text-violet-200">${escapeHtml(names.join(', '))}</strong>. En el mapa se dibuja desplazada (línea discontinua).</span>
+    </p>`;
+}
+
+function updateRouteOverlapHint(trip) {
+    const el = document.getElementById('route-overlap-hint');
+    if (!el) return;
+    const show = tripHasRouteOverlaps(trip);
+    el.classList.toggle('hidden', !show);
+}
 let pendingDeleteRoutePlan = null;
 
 function escapeHtml(text) {
@@ -499,6 +520,7 @@ export function renderRoutePlan() {
     if (!list || !trip) return;
 
     renderRoutePlansBar(trip);
+    updateRouteOverlapHint(trip);
     renderRoutePanelOrigin(trip);
     renderRouteTimeline(trip);
     renderQuickNextSegment(trip);
@@ -556,6 +578,7 @@ export function renderRoutePlan() {
                 </label>
             </div>
             ${buildSegmentDurationHtml(trip, seg)}
+            ${buildSegmentOverlapHtml(trip, seg)}
             ${buildSegmentColorControls(seg)}
             ${canSameRoad ? `
             <label class="flex items-center gap-2 min-h-[40px] cursor-pointer">

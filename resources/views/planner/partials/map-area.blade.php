@@ -6,6 +6,9 @@
         <div class="flex items-center gap-1.5 pt-1 border-t border-slate-800 mt-1"><span class="w-4 h-1 bg-emerald-500 rounded inline-block"></span><span class="text-slate-400 font-medium">🚗 Tramo en coche · clic para cambiar color</span></div>
         <div class="flex items-center gap-1.5"><span class="w-4 h-1 bg-amber-500 rounded inline-block"></span><span class="text-slate-400 font-medium">🏁 Vuelta al final</span></div>
         <div class="flex items-center gap-1.5"><span class="w-4 h-1 bg-purple-500 rounded inline-block border border-dashed border-purple-300"></span><span class="text-slate-400 font-medium">↺ Misma vía ida/vuelta</span></div>
+        <div id="map-overlap-legend" class="hidden pt-1 border-t border-slate-800 mt-1 space-y-1">
+            <div class="flex items-center gap-1.5"><span class="relative w-4 h-2 inline-block"><span class="absolute inset-x-0 top-0 h-0.5 bg-emerald-500 rounded"></span><span class="absolute inset-x-0 top-1 h-0.5 border-t border-dashed border-slate-400"></span></span><span class="text-slate-400 font-medium">↕ Rutas superpuestas</span></div>
+        </div>
     </div>
     <div id="map-routing-loading" class="hidden absolute top-20 left-1/2 -translate-x-1/2 z-[25] pointer-events-none">
         <div class="bg-slate-950/95 backdrop-blur border border-emerald-500/30 text-emerald-300 text-[11px] font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">

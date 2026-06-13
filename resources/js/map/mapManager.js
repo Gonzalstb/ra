@@ -10,8 +10,10 @@ import {
     coordsNearlyEqual,
     getMapDestinations,
 } from '../services/routing';
-import { getActiveRouteSegments } from '../services/routePlans';
+import { ensureRoutePlans, getActiveRouteSegments } from '../services/routePlans';
+import { getOverlappingSegmentInfo, segmentRouteKey, tripHasRouteOverlaps } from '../services/routeOverlap';
 import { effectiveSegmentLineColor, buildSegmentColorPopupHtml } from '../utils/segmentColorUi';
+import { offsetPolylineLatLngs } from '../utils/polylineOffset';
 import { mapsLinkHtml } from '../services/mapsLinks';
 import { showAlert } from '../ui/alerts';
 import {
@@ -199,10 +201,6 @@ function midpointAlongCoords(coords) {
     return coords[idx];
 }
 
-function segmentLineColor(seg) {
-    return effectiveSegmentLineColor(seg);
-}
-
 function bindSegmentLineClick(line, seg) {
     line.on('click', (e) => {
         window.L.DomEvent.stopPropagation(e);
@@ -217,85 +215,165 @@ function bindSegmentLineClick(line, seg) {
     });
 }
 
+function escapeMapHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text ?? '';
+    return div.innerHTML;
+}
+
+const GHOST_PLAN_COLORS = ['#64748b', '#94a3b8', '#475569'];
+
+async function drawOneRouteSegment(L, drawable, {
+    isActive,
+    planName,
+    overlapKeys,
+    legBySegmentId,
+    durationById,
+    ghostOffsetIndex,
+}) {
+    const fromLabel = drawable.from.name?.split(' ')[0] ?? 'Origen';
+    const toLabel = drawable.to.name?.split(' ')[0] ?? 'Destino';
+    const routeKey = segmentRouteKey(drawable.fromKey, drawable.toKey);
+    const isOverlap = overlapKeys.has(routeKey);
+
+    let lineCoords;
+    let leg = null;
+    let durationLabel;
+
+    if (drawable.sameRoadAs) {
+        const refLeg = legBySegmentId.get(drawable.sameRoadAs);
+        if (!refLeg?.geometry?.length) return false;
+        lineCoords = coordsToLatLngs(reverseGeometry(refLeg.geometry));
+        durationLabel = formatDuration(refLeg.durationMin ?? 0);
+    } else {
+        leg = await fetchRouteLeg(
+            { lat: drawable.from.lat, lng: drawable.from.lng },
+            { lat: drawable.to.lat, lng: drawable.to.lng },
+        );
+        if (!leg?.geometry?.length) return false;
+        legBySegmentId.set(drawable.id, leg);
+        lineCoords = coordsToLatLngs(leg.geometry);
+        durationLabel = leg.durationFormatted ?? formatDuration(leg.durationMin);
+    }
+
+    if (isActive && drawable.toDestId) {
+        durationById[drawable.toDestId] = durationLabel;
+    }
+
+    let drawCoords = lineCoords;
+    let lineColor = effectiveSegmentLineColor(drawable);
+    let weight = 5;
+    let opacity = 0.92;
+    let dashArray = drawable.sameRoadAs ? '10, 8' : null;
+
+    if (!isActive) {
+        lineColor = drawable.lineColor || GHOST_PLAN_COLORS[ghostOffsetIndex % GHOST_PLAN_COLORS.length];
+        weight = isOverlap ? 4.5 : 3.5;
+        opacity = isOverlap ? 0.82 : 0.42;
+        dashArray = drawable.sameRoadAs ? '6, 9' : '8, 12';
+        if (isOverlap) {
+            drawCoords = offsetPolylineLatLngs(lineCoords, 16 + (ghostOffsetIndex * 14));
+        }
+    }
+
+    const polylineOpts = {
+        color: lineColor,
+        weight,
+        opacity,
+        lineCap: 'round',
+        lineJoin: 'round',
+    };
+    if (dashArray) polylineOpts.dashArray = dashArray;
+
+    const line = L.polyline(drawCoords, polylineOpts).addTo(mapInstance);
+
+    if (isActive) {
+        bindSegmentLineClick(line, drawable);
+    } else {
+        line.bindTooltip(
+            `<span class="font-bold">${escapeMapHtml(planName)}</span>${isOverlap ? ' · <span class="text-violet-300">superpuesta</span>' : ''}`,
+            { direction: 'top', className: 'route-ghost-tooltip' },
+        );
+    }
+
+    layers.polylines.push(line);
+
+    const mid = midpointAlongCoords(drawCoords);
+    if (!mid) return true;
+
+    if (isActive) {
+        const overlapPlans = overlapKeys.get(routeKey) ?? [];
+        const overlapBadge = overlapPlans.length > 1
+            ? `<span class="text-violet-600 font-bold"> · ↔ ${overlapPlans.length} rutas</span>`
+            : '';
+        const borderClass = drawable.sameRoadAs ? 'border-indigo-300' : 'border-emerald-300';
+        const labelClass = drawable.sameRoadAs ? 'text-indigo-600' : 'text-emerald-700';
+        labelAtCoord(L, mid[0], mid[1], `<div class="px-2 py-0.5 rounded-md bg-white/95 shadow-md border ${borderClass} text-[10px] font-bold whitespace-nowrap">
+            <span class="${labelClass}">${fromLabel} → ${toLabel}:</span> <span class="text-amber-600">${durationLabel}</span>${overlapBadge}
+            ${leg?.distanceKm ? `<span class="text-slate-500"> · ${leg.distanceKm} km</span>` : ''}
+            ${drawable.sameRoadAs ? '<span class="text-slate-500"> · misma vía</span>' : ''}
+        </div>`, [95, 12]);
+    } else if (isOverlap) {
+        labelAtCoord(L, mid[0], mid[1], `<div class="px-2 py-1 rounded-lg bg-slate-900/92 border border-violet-500/40 text-[9px] font-bold text-slate-100 shadow-lg backdrop-blur-sm whitespace-nowrap">
+            ↕ ${escapeMapHtml(planName)} <span class="text-violet-300">· alternativa</span>
+        </div>`, [72, 22]);
+    }
+
+    return true;
+}
+
+function updateMapOverlapLegend(trip) {
+    const el = document.getElementById('map-overlap-legend');
+    if (!el) return;
+    const normalized = ensureRoutePlans(trip);
+    const hasMultiple = normalized.routePlans.length > 1;
+    const hasOverlap = tripHasRouteOverlaps(trip);
+    el.classList.toggle('hidden', !hasMultiple);
+    el.classList.toggle('opacity-100', hasOverlap);
+    el.classList.toggle('opacity-60', hasMultiple && !hasOverlap);
+}
+
 async function drawRouteSegments(L, trip) {
-    const segments = resolveDrawableSegments(trip);
+    const normalized = ensureRoutePlans(trip);
+    const activeId = normalized.activeRoutePlanId ?? normalized.routePlans[0]?.id;
+    const overlapKeys = getOverlappingSegmentInfo(trip);
     const legBySegmentId = new Map();
     const durationById = {};
-    let allOk = segments.length > 0;
+    let allOk = false;
 
-    for (const seg of segments) {
-        const fromLabel = seg.from.name?.split(' ')[0] ?? 'Origen';
-        const toLabel = seg.to.name?.split(' ')[0] ?? 'Destino';
+    updateMapOverlapLegend(trip);
 
-        if (seg.sameRoadAs) {
-            const refLeg = legBySegmentId.get(seg.sameRoadAs);
-            if (!refLeg?.geometry?.length) {
-                allOk = false;
-                continue;
-            }
-            const returnCoords = coordsToLatLngs(reverseGeometry(refLeg.geometry));
-            const lineColor = segmentLineColor(seg);
-            const sameRoadLine = L.polyline(returnCoords, {
-                color: lineColor,
-                weight: 4.5,
-                opacity: 0.92,
-                dashArray: '10, 8',
-                lineCap: 'round',
-                lineJoin: 'round',
-            }).addTo(mapInstance);
-            bindSegmentLineClick(sameRoadLine, seg);
-            layers.polylines.push(sameRoadLine);
-
-            const durationLabel = formatDuration(refLeg.durationMin ?? 0);
-            if (seg.toDestId) {
-                durationById[seg.toDestId] = durationLabel;
-            }
-
-            const mid = midpointAlongCoords(returnCoords);
-            if (mid) {
-                labelAtCoord(L, mid[0], mid[1], `<div class="px-2 py-0.5 rounded-md bg-white/95 shadow-md border border-indigo-300 text-[10px] font-bold whitespace-nowrap">
-              <span class="text-indigo-600">${fromLabel} → ${toLabel}:</span> <span class="text-amber-600">${durationLabel}</span>
-              <span class="text-slate-500"> · misma vía</span></div>`, [95, 12]);
-            }
-            continue;
+    const inactivePlans = normalized.routePlans.filter((p) => p.id !== activeId);
+    let ghostIndex = 0;
+    for (const plan of inactivePlans) {
+        const drawableList = resolveDrawableSegments(trip, plan.segments ?? []);
+        for (const drawable of drawableList) {
+            const ok = await drawOneRouteSegment(L, drawable, {
+                isActive: false,
+                planName: plan.name,
+                overlapKeys,
+                legBySegmentId,
+                durationById,
+                ghostOffsetIndex: ghostIndex,
+            });
+            if (ok) allOk = true;
         }
+        ghostIndex += 1;
+    }
 
-        const leg = await fetchRouteLeg(
-            { lat: seg.from.lat, lng: seg.from.lng },
-            { lat: seg.to.lat, lng: seg.to.lng }
-        );
-
-        if (!leg?.geometry?.length) {
-            allOk = false;
-            continue;
-        }
-
-        legBySegmentId.set(seg.id, leg);
-        const lineCoords = coordsToLatLngs(leg.geometry);
-        const lineColor = segmentLineColor(seg);
-
-        const segmentLine = L.polyline(lineCoords, {
-            color: lineColor,
-            weight: 5,
-            opacity: 0.92,
-            lineCap: 'round',
-            lineJoin: 'round',
-        }).addTo(mapInstance);
-        bindSegmentLineClick(segmentLine, seg);
-        layers.polylines.push(segmentLine);
-
-        if (seg.toDestId) {
-            durationById[seg.toDestId] = leg.durationFormatted ?? formatDuration(leg.durationMin);
-        }
-
-        const mid = midpointAlongCoords(lineCoords);
-        if (mid) {
-            const durationLabel = seg.toDestId
-                ? durationById[seg.toDestId]
-                : (leg.durationFormatted ?? formatDuration(leg.durationMin));
-            labelAtCoord(L, mid[0], mid[1], `<div class="px-2 py-0.5 rounded-md bg-white/95 shadow-md border border-emerald-300 text-[10px] font-bold whitespace-nowrap">
-              <span class="text-emerald-700">${fromLabel} → ${toLabel}:</span> <span class="text-amber-600">${durationLabel}</span>
-              ${leg.distanceKm ? `<span class="text-slate-500"> · ${leg.distanceKm} km</span>` : ''}</div>`);
+    const activePlan = normalized.routePlans.find((p) => p.id === activeId);
+    if (activePlan?.segments?.length) {
+        const drawableList = resolveDrawableSegments(trip, activePlan.segments);
+        for (const drawable of drawableList) {
+            const ok = await drawOneRouteSegment(L, drawable, {
+                isActive: true,
+                planName: activePlan.name,
+                overlapKeys,
+                legBySegmentId,
+                durationById,
+                ghostOffsetIndex: 0,
+            });
+            if (ok) allOk = true;
         }
     }
 
@@ -508,7 +586,7 @@ export async function drawMapElements() {
         layers.markers.push(marker);
     });
 
-    if (getActiveRouteSegments(trip).length > 0) {
+    if (ensureRoutePlans(trip).routePlans.some((p) => (p.segments?.length ?? 0) > 0)) {
         setRoutingLoading(true);
         try {
             const ok = await drawRouteSegments(L, trip);

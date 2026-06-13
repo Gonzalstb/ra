@@ -63,6 +63,9 @@
             <p class="text-[9px] text-slate-600">Doble clic en el nombre para renombrar</p>
         </div>
         <div id="route-plans-bar" class="flex flex-wrap items-center gap-2"></div>
+        <p id="route-overlap-hint" class="hidden text-[9px] text-violet-300/90 leading-snug bg-violet-950/40 border border-violet-500/25 rounded-lg px-2.5 py-2">
+            Hay tramos compartidos entre rutas: en el mapa la alternativa aparece en línea discontinua, ligeramente desplazada.
+        </p>
     </div>
 
     <div id="route-timeline-wrap" class="hidden">

@@ -4,7 +4,7 @@ import {
     setActiveDayId, getActiveTrip, splitDestinations,
 } from '../state/plannerStore';
 import { normalizeTrip } from '../utils/tripNormalize';
-import { getActiveRouteSegments } from '../services/routePlans';
+import { ensureRoutePlans } from '../services/routePlans';
 import { showAlert, bindAlertClose, hideAlert } from '../ui/alerts';
 import { bindTabControls, renderTabs, setActiveTab } from '../ui/tabs';
 import { bindModals, isEditStartModalOpen, isEditDestModalOpen, updateGuideText } from '../ui/modals';
@@ -51,13 +51,18 @@ function buildMapFingerprint(trip) {
         start: trip.startingPoint,
         returnToStart: trip.returnToStart,
         endingPoint: trip.endingPoint,
-        segments: getActiveRouteSegments(trip).map((s) => ({
-            id: s.id,
-            fromKey: s.fromKey,
-            toKey: s.toKey,
-            sameRoadAs: s.sameRoadAs,
-            lineColor: s.lineColor || null,
+        routePlans: ensureRoutePlans(trip).routePlans.map((p) => ({
+            id: p.id,
+            active: p.id === (trip.activeRoutePlanId ?? trip.routePlans?.[0]?.id),
+            segments: (p.segments ?? []).map((s) => ({
+                id: s.id,
+                fromKey: s.fromKey,
+                toKey: s.toKey,
+                sameRoadAs: s.sameRoadAs,
+                lineColor: s.lineColor || null,
+            })),
         })),
+        activeRoutePlanId: trip.activeRoutePlanId,
         dests: trip.destinations.map((d) => ({
             id: d.id,
             lat: d.lat,

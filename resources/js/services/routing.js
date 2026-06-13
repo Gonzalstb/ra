@@ -117,8 +117,8 @@ export function resolveRoutePoint(trip, pointKey) {
 import { getActiveRouteSegments } from './routePlans';
 
 /** Convierte los tramos definidos por el usuario en geometría dibujable. */
-export function resolveDrawableSegments(trip) {
-    const plan = getActiveRouteSegments(trip);
+export function resolveDrawableSegments(trip, segmentsOverride = null) {
+    const plan = segmentsOverride ?? getActiveRouteSegments(trip);
     const drawable = [];
 
     for (const seg of plan) {
@@ -131,6 +131,8 @@ export function resolveDrawableSegments(trip) {
 
         drawable.push({
             id: seg.id,
+            fromKey: seg.fromKey,
+            toKey: seg.toKey,
             from,
             to,
             sameRoadAs: seg.sameRoadAs || null,
