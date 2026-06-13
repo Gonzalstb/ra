@@ -20,7 +20,7 @@ import {
     initMap, drawMapElements, waitForLeaflet, invalidateSize, fitTripBounds,
     applyOsrmDurationsToTrip, setRouteMapHandlers,
 } from '../map/mapManager';
-import { getPendingMapRoutePoint, handleMapRoutePointSelection, requestDeleteRouteSegment, isMapRoutePickPending } from '../ui/routePlan';
+import { getPendingMapRoutePoint, handleMapRoutePointSelection, requestDeleteRouteSegment, updateSegmentLineColor, isMapRoutePickPending } from '../ui/routePlan';
 
 let lastRenderedTab = '';
 let lastMapFingerprint = '';
@@ -140,6 +140,7 @@ export async function initPlanner() {
     setRouteMapHandlers({
         onSelectPoint: (pointKey) => handleMapRoutePointSelection(pointKey, redraw),
         onDeleteSegmentRequest: (segId) => requestDeleteRouteSegment(segId, redraw),
+        onSegmentColorChange: (segId, color) => updateSegmentLineColor(segId, color, redraw),
         getPendingFromPoint: () => getPendingMapRoutePoint(),
         isRoutePickPending: () => isMapRoutePickPending(),
     });

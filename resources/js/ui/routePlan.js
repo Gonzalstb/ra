@@ -287,6 +287,18 @@ export function requestDeleteRouteSegment(segId, onMapRedraw) {
     showAlert('Tramo eliminado.', 'info');
 }
 
+export function updateSegmentLineColor(segId, color, onMapRedraw) {
+    if (!segId) return;
+    const trip = getActiveTrip();
+    const exists = getActiveRouteSegments(trip).some((s) => s.id === segId);
+    if (!exists) return;
+    const nextColor = color || null;
+    updateSegments((segments) => segments.map((s) =>
+        (s.id === segId ? { ...s, lineColor: nextColor } : s)
+    ), onMapRedraw);
+    showAlert(nextColor ? 'Color del tramo actualizado.' : 'Color del tramo restaurado.', 'info');
+}
+
 function renderRoutePanelOrigin(trip) {
     const el = document.getElementById('route-panel-origin-name');
     if (el && trip) {

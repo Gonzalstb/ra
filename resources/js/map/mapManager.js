@@ -9,6 +9,8 @@ import {
     getTripEndPoint,
     coordsNearlyEqual,
     getMapDestinations,
+    defaultSegmentLineColor,
+    SEGMENT_LINE_COLORS,
 } from '../services/routing';
 import { mapsLinkHtml } from '../services/mapsLinks';
 import { showAlert } from '../ui/alerts';
@@ -24,6 +26,7 @@ const layers = { markers: [], polylines: [], labels: [] };
 let routeMapHandlers = {
     onSelectPoint: null,
     onDeleteSegmentRequest: null,
+    onSegmentColorChange: null,
     getPendingFromPoint: null,
     isRoutePickPending: null,
 };
@@ -73,6 +76,21 @@ export function initMap(container, onMapClick) {
             routeMapHandlers.onDeleteSegmentRequest?.(segId);
             map.closePopup();
             return;
+        }
+
+        const colorBtn = e.target.closest('[data-route-seg-color]');
+        if (colorBtn) {
+            const segId = colorBtn.dataset.routeSegColor;
+            const color = colorBtn.dataset.color || null;
+            routeMapHandlers.onSegmentColorChange?.(segId, color);
+            map.closePopup();
+            return;
+        }
+
+        const resetColorBtn = e.target.closest('[data-route-seg-color-reset]');
+        if (resetColorBtn) {
+            routeMapHandlers.onSegmentColorChange?.(resetColorBtn.dataset.routeSegColorReset, null);
+            map.closePopup();
         }
 
         const priceStop = e.target.closest('[data-toggle-price-on-stop]');
@@ -184,6 +202,46 @@ function midpointAlongCoords(coords) {
     return coords[idx];
 }
 
+function segmentLineColor(seg) {
+    return seg.lineColor || defaultSegmentLineColor(!!seg.sameRoadAs);
+}
+
+function buildSegmentColorPopupContent(segId, currentColor) {
+    const swatches = SEGMENT_LINE_COLORS.map((color) => {
+        const selected = color.toLowerCase() === (currentColor || '').toLowerCase();
+        return `<button type="button" data-route-seg-color="${segId}" data-color="${color}"
+            class="w-7 h-7 rounded-full border-2 shadow-sm transition hover:scale-110 ${selected ? 'border-slate-900 ring-2 ring-slate-400' : 'border-white'}"
+            style="background-color:${color}" title="${color}"></button>`;
+    }).join('');
+
+    return `<div class="route-segment-color-popup p-2.5 space-y-2 min-w-[180px]">
+        <p class="text-[10px] font-bold text-slate-700 m-0">Color del tramo</p>
+        <div class="flex flex-wrap gap-1.5">${swatches}</div>
+        <button type="button" data-route-seg-color-reset="${segId}"
+            class="w-full text-[10px] font-semibold text-slate-500 hover:text-slate-700 py-1">
+            Restaurar color por defecto
+        </button>
+        <button type="button" data-route-seg-delete-popup="${segId}"
+            class="w-full px-2 py-1.5 rounded-md bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-bold">
+            🗑 Eliminar tramo
+        </button>
+    </div>`;
+}
+
+function bindSegmentLineClick(line, segId, currentColor) {
+    line.on('click', (e) => {
+        window.L.DomEvent.stopPropagation(e);
+        window.L.popup({
+            closeButton: true,
+            autoClose: true,
+            className: 'route-segment-color-popup-wrap',
+        })
+            .setLatLng(e.latlng)
+            .setContent(buildSegmentColorPopupContent(segId, currentColor))
+            .openOn(mapInstance);
+    });
+}
+
 async function drawRouteSegments(L, trip) {
     const segments = resolveDrawableSegments(trip);
     const legBySegmentId = new Map();
@@ -201,15 +259,16 @@ async function drawRouteSegments(L, trip) {
                 continue;
             }
             const returnCoords = coordsToLatLngs(reverseGeometry(refLeg.geometry));
+            const lineColor = segmentLineColor(seg);
             const sameRoadLine = L.polyline(returnCoords, {
-                color: '#a855f7',
+                color: lineColor,
                 weight: 4.5,
                 opacity: 0.92,
                 dashArray: '10, 8',
                 lineCap: 'round',
                 lineJoin: 'round',
             }).addTo(mapInstance);
-            bindSegmentLongPress(sameRoadLine, seg.id);
+            bindSegmentLineClick(sameRoadLine, seg.id, lineColor);
             layers.polylines.push(sameRoadLine);
 
             const durationLabel = formatDuration(refLeg.durationMin ?? 0);
@@ -238,15 +297,16 @@ async function drawRouteSegments(L, trip) {
 
         legBySegmentId.set(seg.id, leg);
         const lineCoords = coordsToLatLngs(leg.geometry);
+        const lineColor = segmentLineColor(seg);
 
         const segmentLine = L.polyline(lineCoords, {
-            color: '#10b981',
+            color: lineColor,
             weight: 5,
             opacity: 0.92,
             lineCap: 'round',
             lineJoin: 'round',
         }).addTo(mapInstance);
-        bindSegmentLongPress(segmentLine, seg.id);
+        bindSegmentLineClick(segmentLine, seg.id, lineColor);
         layers.polylines.push(segmentLine);
 
         if (seg.toDestId) {
@@ -266,37 +326,6 @@ async function drawRouteSegments(L, trip) {
 
     persistDurationsIfChanged(durationById);
     return allOk;
-}
-
-function bindSegmentLongPress(line, segId) {
-    let pressTimer = null;
-    let pressLatLng = null;
-    const clearPress = () => {
-        if (pressTimer) clearTimeout(pressTimer);
-        pressTimer = null;
-    };
-
-    const startPress = (e) => {
-        clearPress();
-        pressLatLng = e.latlng;
-        pressTimer = setTimeout(() => {
-            if (!pressLatLng) return;
-            window.L.popup({
-                closeButton: false,
-                autoClose: true,
-                className: 'route-segment-delete-popup',
-            })
-                .setLatLng(pressLatLng)
-                .setContent(`<button type="button" data-route-seg-delete-popup="${segId}" class="px-2.5 py-1.5 rounded-md bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold">🗑 Eliminar tramo</button>`)
-                .openOn(mapInstance);
-        }, 650);
-    };
-
-    line.on('mousedown', startPress);
-    line.on('touchstart', startPress);
-    line.on('mouseup', clearPress);
-    line.on('mouseout', clearPress);
-    line.on('touchend', clearPress);
 }
 
 function bindDestinationLongPress(marker, destId) {

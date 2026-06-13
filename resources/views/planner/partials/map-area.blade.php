@@ -3,7 +3,7 @@
         <div class="font-bold text-slate-300 border-b border-slate-800 pb-1 mb-1 text-[9px] tracking-wider uppercase">Elementos</div>
         <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-rose-600 rounded-full inline-block"></span><span class="text-slate-400 font-medium">📍 Parada Activa</span></div>
         <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-sky-600 rounded-full inline-block"></span><span class="text-slate-400 font-medium">🔍 Punto Libre</span></div>
-        <div class="flex items-center gap-1.5 pt-1 border-t border-slate-800 mt-1"><span class="w-4 h-1 bg-emerald-500 rounded inline-block"></span><span class="text-slate-400 font-medium">🚗 Tramo en coche</span></div>
+        <div class="flex items-center gap-1.5 pt-1 border-t border-slate-800 mt-1"><span class="w-4 h-1 bg-emerald-500 rounded inline-block"></span><span class="text-slate-400 font-medium">🚗 Tramo en coche · clic para cambiar color</span></div>
         <div class="flex items-center gap-1.5"><span class="w-4 h-1 bg-amber-500 rounded inline-block"></span><span class="text-slate-400 font-medium">🏁 Vuelta al final</span></div>
         <div class="flex items-center gap-1.5"><span class="w-4 h-1 bg-purple-500 rounded inline-block border border-dashed border-purple-300"></span><span class="text-slate-400 font-medium">↺ Misma vía ida/vuelta</span></div>
     </div>

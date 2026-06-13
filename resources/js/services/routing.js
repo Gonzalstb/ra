@@ -135,11 +135,29 @@ export function resolveDrawableSegments(trip) {
             to,
             sameRoadAs: seg.sameRoadAs || null,
             toDestId,
+            lineColor: seg.lineColor || null,
         });
     }
 
     return drawable;
 }
+
+export function defaultSegmentLineColor(sameRoadAs) {
+    return sameRoadAs ? '#a855f7' : '#10b981';
+}
+
+export const SEGMENT_LINE_COLORS = [
+    '#10b981',
+    '#3b82f6',
+    '#f59e0b',
+    '#ef4444',
+    '#a855f7',
+    '#ec4899',
+    '#06b6d4',
+    '#84cc16',
+    '#f97316',
+    '#6366f1',
+];
 
 export function reverseGeometry(geometry) {
     return geometry?.length ? [...geometry].reverse() : [];
