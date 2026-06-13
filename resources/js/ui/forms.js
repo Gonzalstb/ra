@@ -10,7 +10,7 @@ import { defaultFromKey } from './routePlan';
 import { scheduleSync } from '../services/syncScheduler';
 import { populateDaySelect } from './itinerary';
 import { parsePriceInput } from '../utils/formatPrice';
-import { geocodeAddress } from '../services/geocoding';
+import { geocodeAddress, geocodeErrorMessage } from '../services/geocoding';
 import { showAlert } from './alerts';
 import { setActiveTab } from './tabs';
 import { focusOnLocation, getMap } from '../map/mapManager';
@@ -71,8 +71,8 @@ export function bindForms(onMapRedraw) {
             } else {
                 showAlert('No pudimos localizar esa dirección. Prueba con calle, ciudad y país (ej. «Sant\'Uberto 164, Castagneto Carducci, Italia») o marca el punto en el mapa.', 'error');
             }
-        } catch {
-            showAlert('Error al conectar con el servidor de búsqueda de direcciones.', 'error');
+        } catch (err) {
+            showAlert(geocodeErrorMessage(err), 'error');
         } finally {
             setUi({ isSearchingAddress: false });
         }

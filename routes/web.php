@@ -30,7 +30,7 @@ Route::middleware('auth')->group(function () {
     Route::post('trips/{trip}/share', [TripController::class, 'share']);
     Route::get('airports/countries', [AirportController::class, 'countries']);
     Route::get('airports', [AirportController::class, 'index']);
-    Route::get('geocode', GeocodeController::class)->middleware('throttle:30,1');
+    Route::get('geocode', GeocodeController::class)->middleware('throttle:60,1');
     Route::get('route-leg', RouteLegController::class)->middleware('throttle:90,1');
     Route::get('route-trip', RouteTripController::class)->middleware('throttle:45,1');
 });

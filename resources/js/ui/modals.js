@@ -3,7 +3,7 @@ import {
     rebuildRouteByDayOrder,
 } from '../state/plannerStore';
 import { parsePriceInput } from '../utils/formatPrice';
-import { geocodeAddress } from '../services/geocoding';
+import { geocodeAddress, geocodeErrorMessage } from '../services/geocoding';
 import { showAlert } from './alerts';
 import { setActiveTab } from './tabs';
 import { focusOnLocation } from '../map/mapManager';
@@ -310,8 +310,8 @@ export function bindModals(handlers) {
             } else {
                 showAlert('No se encontró esa dirección.', 'error');
             }
-        } catch {
-            showAlert('Error al buscar la dirección.', 'error');
+        } catch (err) {
+            showAlert(geocodeErrorMessage(err), 'error');
         }
     });
 

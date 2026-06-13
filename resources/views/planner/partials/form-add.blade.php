@@ -24,7 +24,7 @@
                 <input type="text" id="address-search" placeholder="Ej. Calle Mayor 1, Madrid..." class="flex-1 bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition" />
                 <button type="button" id="btn-geocode-address" class="bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 text-slate-950 disabled:text-slate-600 font-extrabold px-3 py-2.5 rounded-xl text-xs transition shrink-0">Buscar</button>
             </div>
-            <p class="text-[10px] text-slate-400 leading-normal">O toca el mapa para fijar coordenadas.</p>
+            <p class="text-[10px] text-slate-400 leading-normal">Pega solo la dirección (calle, CP y ciudad). O toca el mapa para fijar coordenadas.</p>
         </div>
         <div id="form-coords-fields" class="grid grid-cols-2 gap-2">
             <div>

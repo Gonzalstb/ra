@@ -1,5 +1,5 @@
 import { fetchCountries, fetchAirportsByCountry } from '../services/airportsApi';
-import { geocodeAddress } from '../services/geocoding';
+import { geocodeAddress, geocodeErrorMessage } from '../services/geocoding';
 import { showAlert } from './alerts';
 
 const pickers = new Map();
@@ -159,8 +159,8 @@ export function initOriginAirportPicker(prefix, { onSelect, getCurrent, messages
             } else {
                 showAlert(messages.geocodeNotFound, 'error');
             }
-        } catch {
-            showAlert(messages.geocodeError, 'error');
+        } catch (err) {
+            showAlert(geocodeErrorMessage(err), 'error');
         }
     });
 

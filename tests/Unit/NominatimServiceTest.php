@@ -67,4 +67,30 @@ class NominatimServiceTest extends TestCase
         $this->assertEqualsWithDelta(43.466527, $result['lat'], 0.0001);
         $this->assertSame('Lugar + código postal y ciudad', $result['matchedLabel']);
     }
+
+    public function test_strips_booking_confirmation_text_from_query(): void
+    {
+        Http::fake([
+            'nominatim.openstreetmap.org/search*' => function ($request) {
+                $q = $request->data()['q'] ?? '';
+
+                if ($q === 'Via Tuttiventi, 18, 57021 Campiglia Marittima, Italia') {
+                    return Http::response([[
+                        'lat' => '43.0583000',
+                        'lon' => '10.6156000',
+                        'display_name' => 'Via Tuttiventi, Campiglia Marittima, Livorno, Toscana, 57021, Italia',
+                    ]]);
+                }
+
+                return Http::response([]);
+            },
+        ]);
+
+        $raw = 'Via Tuttiventi, 18, 57021 Campiglia Marittima, ItaliaDespués de reservar, encontrarás todos los datos del alojamiento con el número de teléfono y la dirección en tu confirmación de la reserva y en tu cuenta.';
+
+        $result = app(NominatimService::class)->search($raw);
+
+        $this->assertNotNull($result);
+        $this->assertEqualsWithDelta(43.0583, $result['lat'], 0.0001);
+    }
 }

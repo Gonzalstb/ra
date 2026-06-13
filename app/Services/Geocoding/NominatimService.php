@@ -174,6 +174,7 @@ class NominatimService
 
     private function normalizeQuery(string $query): string
     {
+        $query = $this->trimBookingBoilerplate($query);
         $query = str_replace(['‘', '’', '`'], "'", $query);
         $query = preg_replace('/\s*\([^)]*\)/', '', $query) ?? $query;
         $query = preg_replace('/\s*-\s*/', ', ', $query) ?? $query;
@@ -181,6 +182,34 @@ class NominatimService
         $query = preg_replace('/\s+/', ' ', $query) ?? $query;
 
         return trim($query, " ,");
+    }
+
+    private function trimBookingBoilerplate(string $query): string
+    {
+        $patterns = [
+            '/\b(?:después de reservar|after booking|once you have booked|tras la reserva|after your booking)\b.*/iu',
+            '/\b(?:encontrarás todos los datos|you will find all the details|you\'?ll find all)\b.*/iu',
+            '/\b(?:confirmación de la reserva|booking confirmation|in your account|en tu cuenta)\b.*/iu',
+        ];
+
+        foreach ($patterns as $pattern) {
+            $query = preg_replace($pattern, '', $query) ?? $query;
+        }
+
+        $query = preg_replace(
+            '/(Italia|Italy|España|Espana|Spain|France|Francia|Portugal|Germany|Alemania)(?=[A-ZÁÉÍÓÚÀ-ÿ])/u',
+            '$1',
+            $query
+        ) ?? $query;
+
+        if (preg_match('/^(.+?\b\d{5}\b[^.!?]{0,80}?)(?:[.!?]|$)/u', $query, $match)) {
+            $candidate = trim($match[1]);
+            if (mb_strlen($candidate) >= 10) {
+                $query = $candidate;
+            }
+        }
+
+        return trim($query);
     }
 
     private function stripLocalitaPrefix(string $query): string
