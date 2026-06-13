@@ -1,6 +1,7 @@
 import {
-    getActiveTrip, updateActiveTrip, splitDestinations,
+    getActiveTrip, getActiveDayId, updateActiveTrip, splitDestinations,
 } from '../state/plannerStore';
+import { formatDayDateBadge } from '../utils/dayDates';
 import {
     getActiveRouteSegments,
     getActiveRoutePlanName,
@@ -93,6 +94,52 @@ function buildSelectOptions(trip, selectedKey) {
     return placeholder + opts;
 }
 
+function defaultSegmentDayFields(trip) {
+    const dayId = getActiveDayId(trip) || null;
+    const day = trip?.days?.find((d) => d.id === dayId);
+    return {
+        dayId,
+        travelDate: day?.date || null,
+    };
+}
+
+function segmentTravelDate(seg, trip) {
+    if (seg.travelDate) return seg.travelDate;
+    if (seg.dayId) {
+        const day = trip?.days?.find((d) => d.id === seg.dayId);
+        return day?.date || '';
+    }
+    return '';
+}
+
+function buildSegmentDayOptions(trip, selectedDayId) {
+    const days = trip?.days ?? [];
+    return '<option value="">Sin día</option>'
+        + days.map((d, i) => {
+            const badge = formatDayDateBadge(d, i + 1);
+            return `<option value="${escapeHtml(d.id)}" ${d.id === selectedDayId ? 'selected' : ''}>${escapeHtml(badge)} — ${escapeHtml(d.title)}</option>`;
+        }).join('');
+}
+
+function buildSegmentDayControls(seg, trip) {
+    const dateVal = segmentTravelDate(seg, trip);
+    const hasDays = (trip?.days?.length ?? 0) > 0;
+    const daySelect = hasDays ? `
+        <label class="flex-1 min-w-[120px]">
+            <span class="text-[9px] font-bold text-slate-500 uppercase">Día del plan</span>
+            <select data-seg-day="${seg.id}" class="w-full mt-0.5 bg-slate-900 border border-violet-500/30 rounded-lg px-2 py-2 text-[11px] text-white outline-none min-h-[40px]">
+                ${buildSegmentDayOptions(trip, seg.dayId || null)}
+            </select>
+        </label>` : '';
+    return `
+        <label class="shrink-0 min-w-[130px]">
+            <span class="text-[9px] font-bold text-slate-500 uppercase">Fecha</span>
+            <input type="date" data-seg-travel-date="${seg.id}" value="${escapeHtml(dateVal)}"
+                class="w-full mt-0.5 bg-slate-900 border border-violet-500/30 rounded-lg px-2 py-2 text-[11px] text-white outline-none min-h-[40px]" />
+        </label>
+        ${daySelect}`;
+}
+
 export function defaultFromKey(trip) {
     const segs = getActiveRouteSegments(trip);
     if (!segs.length) return ROUTE_POINT_START;
@@ -112,13 +159,36 @@ function segmentValidation(trip, seg) {
     return { valid: true, message: '' };
 }
 
-function updateSegments(mutator, onMapRedraw) {
+function updateSegments(mutator, onMapRedraw, extraTripPatch = null) {
     const trip = getActiveTrip();
     if (!trip) return;
     let segments = [...getActiveRouteSegments(trip)];
     const next = mutator(segments);
     if (next !== undefined) segments = next;
-    updateActiveTrip(withActiveRouteSegments(trip, segments));
+    updateActiveTrip({
+        ...withActiveRouteSegments(trip, segments),
+        ...(extraTripPatch ?? {}),
+    });
+    clearRouteLegCache();
+    renderRoutePlan();
+    onMapRedraw?.();
+    scheduleSync();
+}
+
+function patchSegmentDayMeta(segId, segmentPatch, { syncDayDate = false } = {}, onMapRedraw) {
+    const trip = getActiveTrip();
+    if (!trip) return;
+    const segments = getActiveRouteSegments(trip).map((s) =>
+        (s.id === segId ? { ...s, ...segmentPatch } : s)
+    );
+    const seg = segments.find((s) => s.id === segId);
+    let days = trip.days ?? [];
+    if (syncDayDate && seg?.dayId && Object.prototype.hasOwnProperty.call(segmentPatch, 'travelDate')) {
+        days = days.map((d) =>
+            (d.id === seg.dayId ? { ...d, date: segmentPatch.travelDate || null } : d)
+        );
+    }
+    updateActiveTrip({ ...withActiveRouteSegments(trip, segments), days });
     clearRouteLegCache();
     renderRoutePlan();
     onMapRedraw?.();
@@ -138,6 +208,7 @@ function addSegmentFromMapPoints(fromKey, toKey, onMapRedraw) {
             fromKey,
             toKey,
             sameRoadAs: null,
+            ...defaultSegmentDayFields(trip),
         });
     }, onMapRedraw);
     return true;
@@ -360,8 +431,11 @@ export function renderRoutePlan() {
         const invalidClass = validation.valid ? '' : 'border-rose-500/40 opacity-90';
         return `
         <article class="bg-slate-950/80 border rounded-xl p-2.5 space-y-2 ${validation.valid ? 'border-amber-500/25' : invalidClass}" data-route-seg="${seg.id}">
-            <div class="flex items-center justify-between gap-2">
-                <span class="text-[10px] font-black text-amber-400">Tramo ${index + 1}</span>
+            <div class="flex flex-wrap items-end justify-between gap-2">
+                <div class="flex flex-wrap items-end gap-2 flex-1 min-w-0">
+                    <span class="text-[10px] font-black text-amber-400 pb-2 shrink-0">Tramo ${index + 1}</span>
+                    ${buildSegmentDayControls(seg, trip)}
+                </div>
                 <div class="flex gap-1 shrink-0">
                     <button type="button" data-center-seg="${seg.id}" class="p-1 rounded text-[10px] min-h-[32px] min-w-[28px] text-sky-400 hover:bg-sky-500/10" title="Centrar en mapa">◎</button>
                     <button type="button" data-move-seg="${seg.id}" data-direction="up" ${index === 0 ? 'disabled' : ''}
@@ -437,6 +511,8 @@ function buildChainSegments(trip) {
             fromKey,
             toKey: destPointKey(d.id),
             sameRoadAs: null,
+            dayId: null,
+            travelDate: null,
         });
         fromKey = destPointKey(d.id);
     });
@@ -481,6 +557,7 @@ export function bindRoutePlan(onMapRedraw) {
         const fromKey = btn.dataset.quickFrom;
         const toKey = btn.dataset.quickTo;
         if (!fromKey || !toKey) return;
+        const trip = getActiveTrip();
 
         updateSegments((segments) => {
             segments.push({
@@ -488,6 +565,7 @@ export function bindRoutePlan(onMapRedraw) {
                 fromKey,
                 toKey,
                 sameRoadAs: null,
+                ...defaultSegmentDayFields(trip),
             });
         }, onMapRedraw);
         showAlert('Tramo añadido.', 'success');
@@ -520,6 +598,7 @@ export function bindRoutePlan(onMapRedraw) {
                 fromKey: '',
                 toKey: '',
                 sameRoadAs: null,
+                ...defaultSegmentDayFields(trip),
             });
         }, onMapRedraw);
 
@@ -530,6 +609,28 @@ export function bindRoutePlan(onMapRedraw) {
         const fromSel = e.target.closest('[data-seg-from]');
         const toSel = e.target.closest('[data-seg-to]');
         const sameRoad = e.target.closest('[data-seg-same-road]');
+        const travelDateInput = e.target.closest('[data-seg-travel-date]');
+        const daySel = e.target.closest('[data-seg-day]');
+
+        if (travelDateInput) {
+            const id = travelDateInput.dataset.segTravelDate;
+            const value = travelDateInput.value || null;
+            patchSegmentDayMeta(id, { travelDate: value }, { syncDayDate: true }, onMapRedraw);
+            return;
+        }
+
+        if (daySel) {
+            const id = daySel.dataset.segDay;
+            const dayId = daySel.value || null;
+            const trip = getActiveTrip();
+            const day = trip?.days?.find((d) => d.id === dayId);
+            const current = getActiveRouteSegments(trip).find((s) => s.id === id);
+            patchSegmentDayMeta(id, {
+                dayId,
+                travelDate: day?.date || current?.travelDate || null,
+            }, {}, onMapRedraw);
+            return;
+        }
 
         if (fromSel) {
             const id = fromSel.dataset.segFrom;

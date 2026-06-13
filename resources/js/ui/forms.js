@@ -165,12 +165,16 @@ export function bindForms(onMapRedraw) {
 
         if (createSegment && tripBefore) {
             const fromKey = defaultFromKey(tripBefore);
+            const dayId = assignDayId || getActiveDayId(tripBefore) || null;
+            const day = tripBefore.days?.find((d) => d.id === dayId);
             const segs = [...getActiveRouteSegments(tripBefore)];
             segs.push({
                 id: `seg-${Date.now()}`,
                 fromKey,
                 toKey: destPointKey(newDest.id),
                 sameRoadAs: null,
+                dayId,
+                travelDate: day?.date || null,
             });
             updateActiveTrip(withActiveRouteSegments(tripBefore, segs));
             clearRouteLegCache();

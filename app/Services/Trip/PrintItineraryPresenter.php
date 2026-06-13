@@ -26,12 +26,17 @@ class PrintItineraryPresenter
         );
         $activeRoutePlanId = RoutePlanHelper::activePlanId($routePlans, $trip['activeRoutePlanId'] ?? null);
 
-        $mapSegments = fn (array $planSegments) => collect($planSegments)->values()->map(function (array $seg, int $i) use ($resolveKey) {
+        $mapSegments = fn (array $planSegments) => collect($planSegments)->values()->map(function (array $seg, int $i) use ($resolveKey, $daysById) {
+            $dayId = $seg['dayId'] ?? null;
+            $day = $dayId ? $daysById->get($dayId) : null;
+            $travelDate = $seg['travelDate'] ?? ($day['date'] ?? null);
+
             return [
                 'num' => $i + 1,
                 'from' => $resolveKey($seg['fromKey'] ?? ''),
                 'to' => $resolveKey($seg['toKey'] ?? ''),
                 'sameRoad' => ! empty($seg['sameRoadAs']),
+                'dateLabel' => $this->formatSegmentDateLabel($travelDate, $day),
             ];
         });
 
@@ -137,5 +142,18 @@ class PrintItineraryPresenter
         }
 
         return 'Día '.$fallbackIndex;
+    }
+
+    private function formatSegmentDateLabel(?string $travelDate, ?array $day): ?string
+    {
+        if ($travelDate) {
+            return $travelDate;
+        }
+
+        if ($day && ! empty($day['date'])) {
+            return (string) $day['date'];
+        }
+
+        return null;
     }
 }

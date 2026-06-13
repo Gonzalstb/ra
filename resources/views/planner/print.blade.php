@@ -242,6 +242,12 @@
             font-weight: 600;
             font-size: 0.9rem;
         }
+        .segment-item__date {
+            margin: 0 0 0.15rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--violet, #7c3aed);
+        }
         .segment-item__hint {
             margin: 0.15rem 0 0;
             font-size: 0.75rem;
@@ -453,6 +459,9 @@
                                     <li class="segment-item">
                                         <span class="segment-item__num">{{ $seg['num'] }}</span>
                                         <div>
+                                            @if(!empty($seg['dateLabel']))
+                                                <p class="segment-item__date">{{ $seg['dateLabel'] }}</p>
+                                            @endif
                                             <p class="segment-item__path">{{ $seg['from'] }} → {{ $seg['to'] }}</p>
                                             @if($seg['sameRoad'])
                                                 <p class="segment-item__hint">↺ Misma vía de ida y vuelta</p>
@@ -475,6 +484,9 @@
                             <li class="segment-item">
                                 <span class="segment-item__num">{{ $seg['num'] }}</span>
                                 <div>
+                                    @if(!empty($seg['dateLabel']))
+                                        <p class="segment-item__date">{{ $seg['dateLabel'] }}</p>
+                                    @endif
                                     <p class="segment-item__path">{{ $seg['from'] }} → {{ $seg['to'] }}</p>
                                     @if($seg['sameRoad'])
                                         <p class="segment-item__hint">↺ Misma vía de ida y vuelta</p>
