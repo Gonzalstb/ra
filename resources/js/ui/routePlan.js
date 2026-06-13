@@ -28,6 +28,7 @@ import { syncRouteAndItinerary } from '../services/routeItinerarySync';
 import { setActiveTab } from './tabs';
 import { openEditStartModal } from './modals';
 import { focusOnLocation, getMap } from '../map/mapManager';
+import { effectiveSegmentLineColor, buildSegmentColorSwatchesHtml } from '../utils/segmentColorUi';
 
 let pendingMapFromKey = null;
 let pendingDeleteRoutePlan = null;
@@ -142,6 +143,14 @@ function buildSegmentDayControls(seg, trip) {
                 class="w-full mt-0.5 bg-slate-900 border border-violet-500/30 rounded-lg px-2 py-2 text-[11px] text-white outline-none min-h-[40px]" />
         </label>
         ${daySelect}`;
+}
+
+function buildSegmentColorControls(seg) {
+    return `
+        <div class="space-y-1">
+            <span class="text-[9px] font-bold text-slate-500 uppercase">Color de la línea en mapa</span>
+            ${buildSegmentColorSwatchesHtml(seg.id, seg)}
+        </div>`;
 }
 
 export function defaultFromKey(trip) {
@@ -479,8 +488,9 @@ export function renderRoutePlan() {
         const canSameRoad = index > 0;
         const validation = segmentValidation(trip, seg);
         const invalidClass = validation.valid ? '' : 'border-rose-500/40 opacity-90';
+        const lineColor = effectiveSegmentLineColor(seg);
         return `
-        <article class="bg-slate-950/80 border rounded-xl p-2.5 space-y-2 ${validation.valid ? 'border-amber-500/25' : invalidClass}" data-route-seg="${seg.id}">
+        <article class="bg-slate-950/80 border rounded-xl p-2.5 space-y-2 ${validation.valid ? 'border-amber-500/25' : invalidClass}" data-route-seg="${seg.id}" style="border-left: 4px solid ${lineColor}">
             <div class="flex flex-wrap items-end justify-between gap-2">
                 <div class="flex flex-wrap items-end gap-2 flex-1 min-w-0">
                     <span class="text-[10px] font-black text-amber-400 pb-2 shrink-0">Tramo ${index + 1}</span>
@@ -510,6 +520,7 @@ export function renderRoutePlan() {
                     </select>
                 </label>
             </div>
+            ${buildSegmentColorControls(seg)}
             ${canSameRoad ? `
             <label class="flex items-center gap-2 min-h-[40px] cursor-pointer">
                 <input type="checkbox" data-seg-same-road="${seg.id}" ${seg.sameRoadAs === priorIds[index - 1] ? 'checked' : ''}
@@ -759,6 +770,18 @@ export function bindRoutePlan(onMapRedraw) {
     });
 
     document.getElementById('route-plan-list')?.addEventListener('click', (e) => {
+        const colorBtn = e.target.closest('[data-seg-color]');
+        if (colorBtn) {
+            updateSegmentLineColor(colorBtn.dataset.segColor, colorBtn.dataset.color || null, onMapRedraw);
+            return;
+        }
+
+        const resetColorBtn = e.target.closest('[data-seg-color-reset]');
+        if (resetColorBtn) {
+            updateSegmentLineColor(resetColorBtn.dataset.segColorReset, null, onMapRedraw);
+            return;
+        }
+
         const center = e.target.closest('[data-center-seg]');
         if (center) {
             const trip = getActiveTrip();

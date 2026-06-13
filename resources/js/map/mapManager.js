@@ -9,9 +9,9 @@ import {
     getTripEndPoint,
     coordsNearlyEqual,
     getMapDestinations,
-    defaultSegmentLineColor,
-    SEGMENT_LINE_COLORS,
 } from '../services/routing';
+import { getActiveRouteSegments } from '../services/routePlans';
+import { effectiveSegmentLineColor, buildSegmentColorPopupHtml } from '../utils/segmentColorUi';
 import { mapsLinkHtml } from '../services/mapsLinks';
 import { showAlert } from '../ui/alerts';
 import {
@@ -70,26 +70,23 @@ export function initMap(container, onMapClick) {
             return;
         }
 
-        const delBtn = e.target.closest('[data-route-seg-delete-popup]');
-        if (delBtn) {
-            const segId = delBtn.dataset.routeSegDeletePopup;
-            routeMapHandlers.onDeleteSegmentRequest?.(segId);
-            map.closePopup();
-            return;
-        }
-
-        const colorBtn = e.target.closest('[data-route-seg-color]');
+        const colorBtn = e.target.closest('[data-seg-color]');
         if (colorBtn) {
-            const segId = colorBtn.dataset.routeSegColor;
-            const color = colorBtn.dataset.color || null;
-            routeMapHandlers.onSegmentColorChange?.(segId, color);
+            routeMapHandlers.onSegmentColorChange?.(colorBtn.dataset.segColor, colorBtn.dataset.color || null);
             map.closePopup();
             return;
         }
 
-        const resetColorBtn = e.target.closest('[data-route-seg-color-reset]');
+        const resetColorBtn = e.target.closest('[data-seg-color-reset]');
         if (resetColorBtn) {
-            routeMapHandlers.onSegmentColorChange?.(resetColorBtn.dataset.routeSegColorReset, null);
+            routeMapHandlers.onSegmentColorChange?.(resetColorBtn.dataset.segColorReset, null);
+            map.closePopup();
+            return;
+        }
+
+        const delPopupBtn = e.target.closest('[data-seg-delete-popup]');
+        if (delPopupBtn) {
+            routeMapHandlers.onDeleteSegmentRequest?.(delPopupBtn.dataset.segDeletePopup);
             map.closePopup();
         }
 
@@ -203,32 +200,10 @@ function midpointAlongCoords(coords) {
 }
 
 function segmentLineColor(seg) {
-    return seg.lineColor || defaultSegmentLineColor(!!seg.sameRoadAs);
+    return effectiveSegmentLineColor(seg);
 }
 
-function buildSegmentColorPopupContent(segId, currentColor) {
-    const swatches = SEGMENT_LINE_COLORS.map((color) => {
-        const selected = color.toLowerCase() === (currentColor || '').toLowerCase();
-        return `<button type="button" data-route-seg-color="${segId}" data-color="${color}"
-            class="w-7 h-7 rounded-full border-2 shadow-sm transition hover:scale-110 ${selected ? 'border-slate-900 ring-2 ring-slate-400' : 'border-white'}"
-            style="background-color:${color}" title="${color}"></button>`;
-    }).join('');
-
-    return `<div class="route-segment-color-popup p-2.5 space-y-2 min-w-[180px]">
-        <p class="text-[10px] font-bold text-slate-700 m-0">Color del tramo</p>
-        <div class="flex flex-wrap gap-1.5">${swatches}</div>
-        <button type="button" data-route-seg-color-reset="${segId}"
-            class="w-full text-[10px] font-semibold text-slate-500 hover:text-slate-700 py-1">
-            Restaurar color por defecto
-        </button>
-        <button type="button" data-route-seg-delete-popup="${segId}"
-            class="w-full px-2 py-1.5 rounded-md bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-bold">
-            🗑 Eliminar tramo
-        </button>
-    </div>`;
-}
-
-function bindSegmentLineClick(line, segId, currentColor) {
+function bindSegmentLineClick(line, seg) {
     line.on('click', (e) => {
         window.L.DomEvent.stopPropagation(e);
         window.L.popup({
@@ -237,7 +212,7 @@ function bindSegmentLineClick(line, segId, currentColor) {
             className: 'route-segment-color-popup-wrap',
         })
             .setLatLng(e.latlng)
-            .setContent(buildSegmentColorPopupContent(segId, currentColor))
+            .setContent(buildSegmentColorPopupHtml(seg.id, seg))
             .openOn(mapInstance);
     });
 }
@@ -268,7 +243,7 @@ async function drawRouteSegments(L, trip) {
                 lineCap: 'round',
                 lineJoin: 'round',
             }).addTo(mapInstance);
-            bindSegmentLineClick(sameRoadLine, seg.id, lineColor);
+            bindSegmentLineClick(sameRoadLine, seg);
             layers.polylines.push(sameRoadLine);
 
             const durationLabel = formatDuration(refLeg.durationMin ?? 0);
@@ -306,7 +281,7 @@ async function drawRouteSegments(L, trip) {
             lineCap: 'round',
             lineJoin: 'round',
         }).addTo(mapInstance);
-        bindSegmentLineClick(segmentLine, seg.id, lineColor);
+        bindSegmentLineClick(segmentLine, seg);
         layers.polylines.push(segmentLine);
 
         if (seg.toDestId) {
@@ -533,7 +508,7 @@ export async function drawMapElements() {
         layers.markers.push(marker);
     });
 
-    if ((trip.routeSegments ?? []).length > 0) {
+    if (getActiveRouteSegments(trip).length > 0) {
         setRoutingLoading(true);
         try {
             const ok = await drawRouteSegments(L, trip);
