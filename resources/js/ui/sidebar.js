@@ -9,6 +9,7 @@ import { focusOnLocation } from '../map/mapManager';
 import { openDeleteDestModal, openEditDestModal } from './modals';
 import { renderTripReturnSettings } from './tripReturn';
 import { renderRoutePlan, getDestSegmentNumbers, startMapRouteFromPoint } from './routePlan';
+import { scheduleSync } from '../services/syncScheduler';
 import { getDestRouteOrderNumber } from '../services/routing';
 import {
     destinationFreePoiLabel, destinationPlaceBadgeHtml, destinationPriceBadgeHtml,
@@ -279,6 +280,7 @@ export function bindSidebarListEvents(onMapRedraw) {
                 );
                 renderSidebar();
                 onMapRedraw?.();
+                scheduleSync();
             }
             return;
         }

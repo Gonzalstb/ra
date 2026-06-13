@@ -162,7 +162,6 @@ export function bindForms(onMapRedraw) {
             && document.getElementById('form-create-segment')?.checked !== false;
 
         appendDestination(newDest, { dayId: assignDayId });
-        scheduleSync(true);
 
         if (createSegment && tripBefore) {
             const trip = getActiveTrip() ?? tripBefore;
@@ -181,6 +180,8 @@ export function bindForms(onMapRedraw) {
             updateActiveTrip(syncRouteAndItinerary(withActiveRouteSegments(trip, segs)));
             clearRouteLegCache();
         }
+
+        scheduleSync(true);
 
         resetAddForm();
         setActiveTab('map');

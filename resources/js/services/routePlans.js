@@ -1,5 +1,7 @@
 /** @typedef {{ id: string, name: string, segments: Array<{ id: string, fromKey: string, toKey: string, sameRoadAs: string|null }> }} RoutePlan */
 
+import { ROUTE_POINT_START, destPointKey } from './routing';
+
 function legacyRouteSegments(trip) {
     return Array.isArray(trip.routeSegments) ? [...trip.routeSegments] : [];
 }
@@ -210,4 +212,43 @@ export function syncTripRouteFields(trip) {
         ...normalized,
         routeSegments: segments,
     };
+}
+
+/** Cadena origen → paradas en el orden indicado; conserva metadatos de tramos existentes por toKey. */
+export function buildChainSegmentsForRoute(trip, route) {
+    if (!route.length) return [];
+
+    const oldSegments = getActiveRouteSegments(trip);
+    const oldByToKey = new Map(oldSegments.map((s) => [s.toKey, s]));
+
+    let fromKey = ROUTE_POINT_START;
+    const ts = Date.now();
+
+    return route.map((d, i) => {
+        const toKey = destPointKey(d.id);
+        const prev = oldByToKey.get(toKey);
+        const day = d.dayId ? trip.days?.find((dayItem) => dayItem.id === d.dayId) : null;
+        const seg = {
+            id: prev?.id ?? `seg-${ts}-${i}`,
+            fromKey,
+            toKey,
+            sameRoadAs: null,
+            dayId: prev?.dayId ?? d.dayId ?? null,
+            travelDate: prev?.travelDate ?? day?.date ?? null,
+            lineColor: prev?.lineColor ?? null,
+        };
+        fromKey = toKey;
+        return seg;
+    });
+}
+
+export function buildChainSegmentsForTrip(trip) {
+    const route = (trip.destinations ?? []).filter((d) => d.inRoute);
+    return buildChainSegmentsForRoute(trip, route);
+}
+
+export function reorderActiveRouteSegmentsToMatchDestinations(trip, routeOverride = null) {
+    const route = routeOverride ?? (trip.destinations ?? []).filter((d) => d.inRoute);
+    const segments = buildChainSegmentsForRoute(trip, route);
+    return withActiveRouteSegments(trip, segments);
 }

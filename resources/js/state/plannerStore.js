@@ -1,4 +1,6 @@
 import { syncRouteAndItinerary } from '../services/routeItinerarySync';
+import { reorderActiveRouteSegmentsToMatchDestinations } from '../services/routePlans';
+import { clearRouteLegCache } from '../services/routing';
 
 const initialUi = {
     activeTab: 'map',
@@ -193,7 +195,10 @@ export function moveRouteDestinationToIndex(destId, toIndex) {
     }
 
     route.splice(insertAt, 0, item);
-    updateActiveTrip({ destinations: mergeDestinations(route, standalone) });
+    const destinations = mergeDestinations(route, standalone);
+    const nextTrip = reorderActiveRouteSegmentsToMatchDestinations({ ...trip, destinations }, route);
+    updateActiveTrip(nextTrip);
+    clearRouteLegCache();
     return true;
 }
 

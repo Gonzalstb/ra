@@ -12,6 +12,7 @@ import {
     renameRoutePlan,
     duplicateRoutePlan,
     ensureRoutePlans,
+    buildChainSegmentsForTrip,
 } from '../services/routePlans';
 import {
     getRoutePointOptions,
@@ -633,27 +634,8 @@ function highlightSegmentRow(segId) {
 }
 
 function buildChainSegments(trip) {
-    const { route } = splitDestinations(trip.destinations);
-    if (!route.length) return null;
-
-    const segments = [];
-    let fromKey = ROUTE_POINT_START;
-    const ts = Date.now();
-
-    route.forEach((d, i) => {
-        const day = d.dayId ? trip.days?.find((dayItem) => dayItem.id === d.dayId) : null;
-        segments.push({
-            id: `seg-${ts}-${i}`,
-            fromKey,
-            toKey: destPointKey(d.id),
-            sameRoadAs: null,
-            dayId: d.dayId || null,
-            travelDate: day?.date || null,
-        });
-        fromKey = destPointKey(d.id);
-    });
-
-    return segments;
+    const chain = buildChainSegmentsForTrip(trip);
+    return chain.length ? chain : null;
 }
 
 export function bindRoutePlan(onMapRedraw) {

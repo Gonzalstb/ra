@@ -1,4 +1,5 @@
 import { getActiveTrip, splitDestinations, moveRouteDestinationToIndex } from '../state/plannerStore';
+import { scheduleSync } from '../services/syncScheduler';
 import { showAlert } from './alerts';
 import { renderSidebar } from './sidebar';
 
@@ -76,6 +77,7 @@ function commitDrop(routeList, clientY, onMapRedraw) {
         showAlert(`↕️ '${dest?.name}' reordenado en la ruta.`, 'info');
         renderSidebar();
         onMapRedraw?.();
+        scheduleSync();
     }
 
     clearDragState(routeList);

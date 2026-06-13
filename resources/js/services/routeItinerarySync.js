@@ -2,18 +2,6 @@ import { parseDestPointKey, destPointKey } from './routing';
 import { getActiveRouteSegments, withActiveRouteSegments } from './routePlans';
 import { sameDayId } from '../utils/destinationHelpers';
 
-function reorderDestinationsByDays(trip, destinations) {
-    const route = destinations.filter((d) => d.inRoute);
-    const standalone = destinations.filter((d) => !d.inRoute);
-    const days = trip.days ?? [];
-    const newRoute = [];
-    for (const day of days) {
-        newRoute.push(...route.filter((d) => sameDayId(d.dayId, day.id)));
-    }
-    newRoute.push(...route.filter((d) => !d.dayId));
-    return [...newRoute, ...standalone];
-}
-
 /** Sincroniza dayId/travelDate entre tramos activos y paradas del itinerario. */
 export function syncRouteAndItinerary(trip) {
     if (!trip) return trip;
@@ -46,8 +34,6 @@ export function syncRouteAndItinerary(trip) {
             };
         });
     });
-
-    destinations = reorderDestinationsByDays(trip, destinations);
 
     return {
         ...withActiveRouteSegments(trip, segments),
