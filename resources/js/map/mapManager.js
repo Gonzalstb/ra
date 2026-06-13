@@ -11,6 +11,8 @@ import {
     coordsNearlyEqual,
     getMapDestinations,
     isOffRouteMapPoint,
+    getDestRouteOrderNumber,
+    getRouteStopOrderByDestId,
     ROUTE_POINT_END,
     ROUTE_POINT_START,
     destPointKey,
@@ -638,6 +640,7 @@ export async function drawMapElements() {
     }
 
     const routeDestinations = destinations.filter((d) => d.inRoute && d.lat != null && d.lng != null && !d.isTextOnly);
+    const stopOrder = getRouteStopOrderByDestId(trip);
     const mapDestinations = getMapDestinations(trip);
     const pickPending = routeMapHandlers.isRoutePickPending?.() ?? false;
     const hideOffRoute = isHideOffRouteMapPoints() && !pickPending;
@@ -646,14 +649,21 @@ export async function drawMapElements() {
         if (dest.isTextOnly || dest.lat == null || dest.lng == null) return;
         if (hideOffRoute && isOffRouteMapPoint(trip, dest)) return;
 
-        const routeIndex = routeDestinations.findIndex((d) => d.id === dest.id);
+        const orderNum = getDestRouteOrderNumber(trip, dest.id);
+        const routeIndex = orderNum != null
+            ? orderNum - 1
+            : routeDestinations.findIndex((d) => d.id === dest.id);
+        const onRouteStop = orderNum != null || dest.inRoute;
         const isReserved = !!dest.isReserved;
         const borderClass = isReserved
             ? 'border-emerald-400 ring-2 ring-emerald-400/50'
-            : dest.inRoute ? 'border-amber-500' : 'border-sky-400';
-        const badgeColor = destinationMapBadgeColor(dest);
-        const badgeIcon = destinationMapBadgeIcon(dest, routeIndex);
+            : onRouteStop ? 'border-amber-500' : 'border-sky-400';
+        const badgeColor = destinationMapBadgeColor(dest, orderNum);
+        const badgeIcon = destinationMapBadgeIcon(dest, orderNum);
         const badgeEmojiClass = isPlaceEmojiBadge(badgeIcon) ? 'text-[10px] leading-none' : 'text-[9px]';
+        const orderMapLabel = orderNum != null
+            ? `<div class="absolute -bottom-7 left-1/2 -translate-x-1/2 bg-amber-950/95 border border-amber-500/45 text-[9px] text-amber-200 font-black px-1.5 py-0.5 rounded whitespace-nowrap shadow-md pointer-events-none max-w-[88px] truncate">${orderNum} · ${escapeMapHtml(dest.name.split(' ')[0])}</div>`
+            : '';
         const favoriteBadge = dest.isFavorite
             ? '<div class="absolute -top-1 -left-1 w-5 h-5 bg-amber-500 text-white border-2 border-white text-[9px] rounded-full flex items-center justify-center font-bold shadow-md">★</div>'
             : '';
@@ -674,32 +684,50 @@ export async function drawMapElements() {
             <div class="absolute -top-1 -right-1 w-5 h-5 ${badgeColor} text-white border-2 border-white ${badgeEmojiClass} rounded-full flex items-center justify-center font-bold shadow-md">
               ${badgeIcon}
             </div>
+            ${orderMapLabel}
           </div>`,
             iconSize: [40, 40],
             iconAnchor: [20, 20],
         });
 
-        const prevForMaps = routeIndex > 0
-            ? { lat: routeDestinations[routeIndex - 1].lat, lng: routeDestinations[routeIndex - 1].lng }
-            : { lat: startingPoint.lat, lng: startingPoint.lng };
+        const prevForMaps = (() => {
+            if (orderNum != null && orderNum > 1) {
+                const prevId = [...stopOrder.entries()].find(([, n]) => n === orderNum - 1)?.[0];
+                const prevDest = prevId
+                    ? destinations.find((d) => String(d.id) === String(prevId))
+                    : null;
+                if (prevDest?.lat != null) {
+                    return { lat: prevDest.lat, lng: prevDest.lng };
+                }
+            }
+            if (routeIndex > 0) {
+                return {
+                    lat: routeDestinations[routeIndex - 1].lat,
+                    lng: routeDestinations[routeIndex - 1].lng,
+                };
+            }
+            return { lat: startingPoint.lat, lng: startingPoint.lng };
+        })();
 
-        const mapsBtn = dest.inRoute
+        const mapsBtn = onRouteStop
             ? `<div class="mt-2">${mapsLinkHtml(prevForMaps, { lat: dest.lat, lng: dest.lng })}</div>`
             : '';
 
         const routePickBtn = `<button type="button" data-route-pick-point="${destPointKey(dest.id)}" class="mt-2 px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold">${pickPending ? 'Usar como destino del tramo' : 'Añadir a la ruta'}</button>`;
 
+        const popupTitle = orderNum != null ? `${orderNum}. ${dest.name}` : dest.name;
+
         const popupContent = `
         <div class="w-64 overflow-hidden rounded-lg font-sans">
           <img src="${dest.photoUrl}" class="w-full h-32 object-cover m-0" alt="" />
           <div class="p-3">
-            <h3 class="font-bold text-white text-base m-0 truncate">${dest.name}</h3>
+            <h3 class="font-bold text-white text-base m-0 truncate">${popupTitle}</h3>
             ${isReserved ? '<span class="inline-block mt-1.5 text-[10px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-600/50 px-2 py-0.5 rounded">✓ Reservado</span>' : ''}
             ${dest.isFavorite ? '<span class="inline-block mt-1.5 ml-1 text-[10px] font-bold text-amber-300 bg-amber-950 border border-amber-500/50 px-2 py-0.5 rounded">★ Favorito</span>' : ''}
             ${popupBadges}
             <p class="text-xs text-slate-300 my-2 leading-relaxed">${dest.description}</p>
             <p class="text-[10px] text-slate-400 -mt-1">Mantén pulsada la chincheta para marcar/quitar favorito.</p>
-            ${dest.inRoute ? `
+            ${onRouteStop ? `
               <div class="text-xs text-amber-400 font-extrabold bg-slate-900/80 p-2 rounded border border-slate-800 mt-2">
                 🚗 ${dest.duration} <span class="text-slate-500 font-normal">· en coche</span>
               </div>

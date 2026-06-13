@@ -114,16 +114,20 @@ export function destinationFreePoiLabel(dest) {
     return meta ? meta.icon : 'POI';
 }
 
-export function destinationMapBadgeIcon(dest, routeIndex) {
+export function destinationMapBadgeIcon(dest, routeOrderNumber) {
     if (dest?.isReserved) return '✓';
+    if (routeOrderNumber != null && routeOrderNumber > 0) {
+        return String(routeOrderNumber);
+    }
     const meta = destinationPlaceMeta(dest);
     if (meta) return meta.icon;
-    if (dest?.inRoute) return String(routeIndex + 1);
+    if (dest?.inRoute) return '·';
     return '🔍';
 }
 
-export function destinationMapBadgeColor(dest) {
+export function destinationMapBadgeColor(dest, routeOrderNumber = null) {
     if (dest?.isReserved) return 'bg-emerald-600';
+    if (routeOrderNumber != null && routeOrderNumber > 0) return 'bg-amber-600';
     const meta = destinationPlaceMeta(dest);
     if (meta) return meta.mapBadgeColor;
     if (dest?.inRoute) return 'bg-rose-600';

@@ -9,7 +9,7 @@ import { focusOnLocation } from '../map/mapManager';
 import { openDeleteDestModal, openEditDestModal } from './modals';
 import { renderTripReturnSettings } from './tripReturn';
 import { renderRoutePlan, getDestSegmentNumbers, startMapRouteFromPoint } from './routePlan';
-import { destPointKey } from '../services/routing';
+import { getDestRouteOrderNumber } from '../services/routing';
 import {
     destinationFreePoiLabel, destinationPlaceBadgeHtml, destinationPriceBadgeHtml,
     isTextOnlyDestination, canTogglePriceOnStop, toggleDestinationPriceBadge,
@@ -79,9 +79,15 @@ function renderActionButtons(dest, isRoute) {
     </div>`;
 }
 
+function renderStopOrderBadge(orderNum) {
+    if (orderNum == null) return '';
+    return `<span class="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-400 text-[11px] font-black shrink-0" title="Parada ${orderNum}">${orderNum}</span>`;
+}
+
 function renderDestCard(dest, index, type, trip, routeDestinations = [], routeCount = 0) {
     const isRoute = type === 'route';
     const textOnly = isTextOnlyDestination(dest);
+    const orderNum = getDestRouteOrderNumber(trip, dest.id) ?? (isRoute ? index + 1 : null);
     const placeBadge = destinationPlaceBadgeHtml(dest);
     const priceBadge = canTogglePriceOnStop(dest) ? destinationPriceBadgeHtml(dest) : '';
     const priceToggleAttrs = canTogglePriceOnStop(dest)
@@ -118,12 +124,15 @@ function renderDestCard(dest, index, type, trip, routeDestinations = [], routeCo
             ${textOnly
         ? '<span class="text-xl">📝</span>'
         : `<img src="${escapeHtml(dest.photoUrl)}" alt="" class="w-full h-full object-cover" />
-            ${isRoute
-        ? `<span class="absolute bottom-0 right-0 bg-slate-950/90 text-[8px] text-amber-400 font-extrabold px-1 py-0.5 rounded-tl-md">#${index + 1}</span>`
+            ${isRoute || orderNum != null
+        ? `<span class="absolute bottom-0 right-0 bg-slate-950/90 text-[8px] text-amber-400 font-extrabold px-1 py-0.5 rounded-tl-md">${orderNum ?? index + 1}</span>`
         : `<span class="absolute top-0.5 left-0.5 bg-sky-950/90 text-[8px] text-sky-400 font-extrabold px-1 py-0.5 rounded">${destinationFreePoiLabel(dest)}</span>`}`}
           </div>
           <div class="flex-1 min-w-0 text-left">
-            <h4 class="font-bold text-sm ${isRoute ? 'text-white' : 'text-slate-300'} truncate">${escapeHtml(dest.name)}</h4>
+            <div class="flex items-center gap-2 min-w-0">
+              ${renderStopOrderBadge(orderNum)}
+              <h4 class="font-bold text-sm ${isRoute || orderNum != null ? 'text-white' : 'text-slate-300'} truncate">${escapeHtml(dest.name)}</h4>
+            </div>
             <div class="flex flex-wrap gap-1 mt-0.5${canTogglePriceOnStop(dest) ? ' cursor-pointer' : ''}"${priceToggleAttrs}>
             ${dayTitle ? `<span class="text-[9px] font-bold text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20 max-w-full truncate">${escapeHtml(dayTitle)}</span>` : ''}
             ${segBadge}

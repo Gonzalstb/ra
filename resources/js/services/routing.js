@@ -82,11 +82,11 @@ export function getRoutePointOptions(trip) {
         options.push({ key: ROUTE_POINT_END, label: `🏁 Final: ${end.name ?? 'Punto final'}` });
     }
 
-    const routeIds = (trip.destinations ?? []).filter((d) => d.inRoute).map((d) => d.id);
+    const stopOrder = getRouteStopOrderByDestId(trip);
 
     getMapDestinations(trip).forEach((d) => {
-        const routeIndex = routeIds.indexOf(d.id);
-        const prefix = routeIndex >= 0 ? `#${routeIndex + 1}` : '🔍';
+        const orderNum = stopOrder.get(String(d.id));
+        const prefix = orderNum != null ? `${orderNum}.` : '🔍';
         options.push({
             key: destPointKey(d.id),
             label: `${prefix} ${d.name}`,
@@ -115,6 +115,37 @@ export function resolveRoutePoint(trip, pointKey) {
 }
 
 import { getActiveRouteSegments, ensureRoutePlans } from './routePlans';
+
+/** Orden 1-based de paradas según llegadas (toKey) en la ruta activa. */
+export function getRouteStopOrderByDestId(trip) {
+    const normalized = ensureRoutePlans(trip);
+    const orderMap = new Map();
+    let seq = 0;
+
+    getActiveRouteSegments(normalized).forEach((seg) => {
+        const destId = parseDestPointKey(seg.toKey);
+        if (!destId) return;
+        const key = String(destId);
+        if (orderMap.has(key)) return;
+        const dest = normalized.destinations?.find((d) => String(d.id) === key);
+        if (!dest || dest.isTextOnly || dest.lat == null || dest.lng == null) return;
+        seq += 1;
+        orderMap.set(key, seq);
+    });
+
+    if (!orderMap.size) {
+        normalized.destinations
+            ?.filter((d) => d.inRoute && !d.isTextOnly && d.lat != null && d.lng != null)
+            .forEach((d, i) => orderMap.set(String(d.id), i + 1));
+    }
+
+    return orderMap;
+}
+
+export function getDestRouteOrderNumber(trip, destId) {
+    if (destId == null || destId === '') return null;
+    return getRouteStopOrderByDestId(trip).get(String(destId)) ?? null;
+}
 
 /** IDs de paradas referenciadas en tramos (todas las rutas alternativas). */
 export function getRouteReferencedDestIds(trip) {

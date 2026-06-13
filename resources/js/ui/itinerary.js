@@ -10,7 +10,7 @@ import { renderSidebar } from './sidebar';
 import { focusOnLocation, fitDestinationsBounds } from '../map/mapManager';
 import { openDirections } from '../services/mapsLinks';
 import { setActiveTab } from './tabs';
-import { parseDestPointKey } from '../services/routing';
+import { parseDestPointKey, getDestRouteOrderNumber } from '../services/routing';
 import { getActiveRouteSegments } from '../services/routePlans';
 import { getDestSegmentNumbers } from './routePlan';
 import { formatDayDateBadge, formatDayDateRangeLong } from '../utils/dayDates';
@@ -150,11 +150,11 @@ function renderPlanStopCard(d, trip, routeIndex) {
                 ${textOnly
         ? `<div class="w-11 h-11 rounded-lg border border-violet-500/40 bg-violet-950/80 flex items-center justify-center text-lg">${placeMeta ? placeMeta.icon : '📝'}</div>`
         : `<img src="${escapeHtml(d.photoUrl)}" alt="" class="w-11 h-11 rounded-lg object-cover border ${reserved ? 'border-emerald-500/60' : 'border-slate-700'}" />
-                ${d.inRoute ? `<span class="absolute -bottom-1 -right-1 text-[8px] font-black bg-slate-950 text-amber-400 px-1 rounded border border-amber-500/30">#${routeIndex + 1}</span>` : ''}`}
+                ${d.inRoute || getDestRouteOrderNumber(trip, d.id) != null ? `<span class="absolute -bottom-1 -right-1 text-[8px] font-black bg-slate-950 text-amber-400 px-1 rounded border border-amber-500/30">${getDestRouteOrderNumber(trip, d.id) ?? routeIndex + 1}</span>` : ''}`}
             </div>
             <div class="flex-1 min-w-0">
                 <div class="flex flex-wrap items-center gap-1${canTogglePriceOnStop(d) ? ' cursor-pointer' : ''}"${priceToggleAttrs}>
-                    <p class="text-[11px] font-bold text-white truncate max-w-full">${escapeHtml(d.name)}</p>
+                    <p class="text-[11px] font-bold text-white truncate max-w-full">${stopOrderNum != null ? `<span class="text-amber-400 font-black mr-0.5">${stopOrderNum}.</span>` : ''}${escapeHtml(d.name)}</p>
                     ${reserved ? '<span class="text-[8px] font-black uppercase tracking-wide text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded">Reservado</span>' : ''}
                     ${favoriteBtn}
                     ${siteBtn}
