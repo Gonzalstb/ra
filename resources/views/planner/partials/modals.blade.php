@@ -166,3 +166,14 @@
         </div>
     </div>
 </div>
+
+<div id="modal-delete-route-plan" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+    <div class="bg-slate-950 border border-slate-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4 text-center">
+        <h3 class="font-bold text-lg text-white">¿Eliminar ruta?</h3>
+        <p class="text-xs md:text-sm text-slate-400">¿Estás seguro de que quieres borrar <strong id="delete-route-plan-name" class="text-slate-200"></strong>? Se perderán todos sus tramos.</p>
+        <div class="flex gap-2.5 pt-3">
+            <button type="button" data-close-delete-route-plan class="flex-1 bg-slate-900 text-slate-300 font-bold py-2.5 rounded-xl text-xs h-11">Cancelar</button>
+            <button type="button" id="btn-confirm-delete-route-plan" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs h-11">Eliminar</button>
+        </div>
+    </div>
+</div>

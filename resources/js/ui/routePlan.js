@@ -27,6 +27,7 @@ import { openEditStartModal } from './modals';
 import { focusOnLocation, getMap } from '../map/mapManager';
 
 let pendingMapFromKey = null;
+let pendingDeleteRoutePlan = null;
 
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -522,6 +523,7 @@ function buildChainSegments(trip) {
 
 export function bindRoutePlan(onMapRedraw) {
     bindRoutePlansBar(onMapRedraw);
+    bindDeleteRoutePlanModal(onMapRedraw);
 
     document.getElementById('btn-edit-origin-route')?.addEventListener('click', openEditStartModal);
     document.getElementById('btn-focus-origin-route')?.addEventListener('click', () => {
@@ -711,6 +713,47 @@ function switchRoutePlan(planId, onMapRedraw) {
     scheduleSync();
 }
 
+function openDeleteRoutePlanModal(planId, planName) {
+    pendingDeleteRoutePlan = { planId, planName };
+    const nameEl = document.getElementById('delete-route-plan-name');
+    if (nameEl) nameEl.textContent = planName;
+    document.getElementById('modal-delete-route-plan')?.classList.remove('hidden');
+}
+
+function closeDeleteRoutePlanModal() {
+    pendingDeleteRoutePlan = null;
+    document.getElementById('modal-delete-route-plan')?.classList.add('hidden');
+}
+
+function confirmDeleteRoutePlan(onMapRedraw) {
+    if (!pendingDeleteRoutePlan) return;
+    const trip = getActiveTrip();
+    if (!trip) return;
+    const { planId, planName } = pendingDeleteRoutePlan;
+    closeDeleteRoutePlanModal();
+    pendingMapFromKey = null;
+    updateActiveTrip(removeRoutePlan(trip, planId));
+    clearRouteLegCache();
+    renderRoutePlan();
+    onMapRedraw?.();
+    scheduleSync();
+    showAlert(`«${planName}» eliminada.`, 'info');
+}
+
+function bindDeleteRoutePlanModal(onMapRedraw) {
+    const modal = document.getElementById('modal-delete-route-plan');
+    if (!modal || modal.dataset.bound === '1') return;
+    modal.dataset.bound = '1';
+
+    document.querySelectorAll('[data-close-delete-route-plan]').forEach((el) => {
+        el.addEventListener('click', () => closeDeleteRoutePlanModal());
+    });
+
+    document.getElementById('btn-confirm-delete-route-plan')?.addEventListener('click', () => {
+        confirmDeleteRoutePlan(onMapRedraw);
+    });
+}
+
 function bindRoutePlansBar(onMapRedraw) {
     const wrap = document.getElementById('route-plans-wrap');
     if (!wrap || wrap.dataset.bound === '1') return;
@@ -724,13 +767,7 @@ function bindRoutePlansBar(onMapRedraw) {
             const planId = deleteBtn.dataset.deleteRoutePlan;
             const plan = ensureRoutePlans(trip).routePlans.find((p) => p.id === planId);
             if (!plan) return;
-            pendingMapFromKey = null;
-            updateActiveTrip(removeRoutePlan(trip, planId));
-            clearRouteLegCache();
-            renderRoutePlan();
-            onMapRedraw?.();
-            scheduleSync();
-            showAlert(`«${plan.name}» eliminada.`, 'info');
+            openDeleteRoutePlanModal(planId, plan.name);
             return;
         }
 
